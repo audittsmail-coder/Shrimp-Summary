@@ -3,7 +3,12 @@
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("sw.js");
+      navigator.serviceWorker.register("sw.js").then(function (registration) {
+        registration.update();
+        document.addEventListener("visibilitychange", function () {
+          if (document.visibilityState === "visible") registration.update();
+        });
+      });
     });
     var refreshingAfterUpdate = false;
     navigator.serviceWorker.addEventListener("controllerchange", function () {
