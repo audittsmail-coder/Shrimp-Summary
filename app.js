@@ -1,6 +1,18 @@
 (function () {
   "use strict";
 
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js");
+    });
+    var refreshingAfterUpdate = false;
+    navigator.serviceWorker.addEventListener("controllerchange", function () {
+      if (refreshingAfterUpdate) return;
+      refreshingAfterUpdate = true;
+      window.location.reload();
+    });
+  }
+
   var form = document.getElementById("harvest-form");
   var recordIdInput = document.getElementById("record-id");
   var farmInput = document.getElementById("farm");
