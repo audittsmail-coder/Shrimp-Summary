@@ -332,9 +332,7 @@
     var stats = [
       { label: "จำนวนรายการ", value: totalRecords },
       { label: "จำนวนบ่อที่บันทึก", value: pondKeys.size },
-      { label: "จำนวนปล่อยรวม (ตัว)", value: fmt(totalStocking, 0) },
       { label: "จับรวมทั้งหมด (กก.)", value: fmt(totalCatch, 2) },
-      { label: "จับรวมทั้งหมด (ตัว)", value: fmt(totalHarvestedCount, 0) },
       { label: "อาหารรวมทั้งหมด (กก.)", value: fmt(totalFeed, 2) },
       { label: "มูลค่ารวม (บาท)", value: fmt(totalValue, 2) },
       { label: "อัตรารอดเฉลี่ยรวม", value: overallSurvival === null ? "-" : fmt(overallSurvival, 1) + "%" },
