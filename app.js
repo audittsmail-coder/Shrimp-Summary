@@ -21,10 +21,13 @@
   var sizeInput = document.getElementById("size");
   var priceInput = document.getElementById("price");
   var cultureDaysInput = document.getElementById("cultureDays");
+  var stockingCountInput = document.getElementById("stockingCount");
   var catchAmountInput = document.getElementById("catchAmount");
   var totalFeedInput = document.getElementById("totalFeed");
   var fcrPreview = document.getElementById("fcr-preview");
   var valuePreview = document.getElementById("value-preview");
+  var countPreview = document.getElementById("count-preview");
+  var survivalPreview = document.getElementById("survival-preview");
   var submitBtn = document.getElementById("submit-btn");
   var formTitle = document.getElementById("form-title");
   var cancelEditBtn = document.getElementById("cancel-edit-btn");
@@ -76,6 +79,15 @@
     return feed / catchAmount;
   }
 
+  function calcHarvestedCount(catchAmount, size) {
+    return catchAmount * size;
+  }
+
+  function calcSurvivalRate(stockingCount, harvestedCount) {
+    if (!stockingCount) return null;
+    return (harvestedCount / stockingCount) * 100;
+  }
+
   function fmt(n, digits) {
     if (n === null || n === undefined || isNaN(n)) return "-";
     return n.toLocaleString("th-TH", {
@@ -91,16 +103,29 @@
     return "fcr-bad";
   }
 
+  function survivalBadgeClass(rate) {
+    if (rate === null) return "";
+    if (rate >= 70) return "fcr-good";
+    if (rate >= 50) return "fcr-ok";
+    return "fcr-bad";
+  }
+
   function updatePreview() {
     var feed = toNumber(totalFeedInput.value);
     var catchAmount = toNumber(catchAmountInput.value);
     var price = toNumber(priceInput.value);
+    var size = toNumber(sizeInput.value);
+    var stockingCount = toNumber(stockingCountInput.value);
     var fcr = calcFcr(feed, catchAmount);
+    var harvestedCount = calcHarvestedCount(catchAmount, size);
+    var survivalRate = calcSurvivalRate(stockingCount, harvestedCount);
     fcrPreview.textContent = fcr === null ? "-" : fmt(fcr, 2);
     valuePreview.textContent = catchAmount && price ? fmt(catchAmount * price, 2) : "-";
+    countPreview.textContent = harvestedCount ? fmt(harvestedCount, 0) + " ตัว" : "-";
+    survivalPreview.textContent = survivalRate === null ? "-" : fmt(survivalRate, 1) + "%";
   }
 
-  [totalFeedInput, catchAmountInput, priceInput].forEach(function (el) {
+  [totalFeedInput, catchAmountInput, priceInput, sizeInput, stockingCountInput].forEach(function (el) {
     el.addEventListener("input", updatePreview);
   });
 
@@ -126,6 +151,7 @@
       size: toNumber(sizeInput.value),
       price: toNumber(priceInput.value),
       cultureDays: toNumber(cultureDaysInput.value),
+      stockingCount: toNumber(stockingCountInput.value),
       catchAmount: toNumber(catchAmountInput.value),
       totalFeed: toNumber(totalFeedInput.value)
     };
@@ -153,6 +179,7 @@
     sizeInput.value = r.size;
     priceInput.value = r.price;
     cultureDaysInput.value = r.cultureDays;
+    stockingCountInput.value = r.stockingCount;
     catchAmountInput.value = r.catchAmount;
     totalFeedInput.value = r.totalFeed;
     formTitle.textContent = "แก้ไขรายการ";
@@ -198,6 +225,8 @@
     filtered.forEach(function (r) {
       var fcr = calcFcr(r.totalFeed, r.catchAmount);
       var value = r.catchAmount * r.price;
+      var harvestedCount = calcHarvestedCount(r.catchAmount, r.size);
+      var survivalRate = calcSurvivalRate(r.stockingCount, harvestedCount);
       var tr = document.createElement("tr");
       tr.innerHTML =
         "<td>" + escapeHtml(r.harvestDate || "-") + "</td>" +
@@ -206,7 +235,10 @@
         "<td>" + fmt(r.size, 1) + "</td>" +
         "<td>" + fmt(r.price, 2) + "</td>" +
         "<td>" + fmt(r.cultureDays, 0) + "</td>" +
+        "<td>" + fmt(r.stockingCount, 0) + "</td>" +
         "<td>" + fmt(r.catchAmount, 2) + "</td>" +
+        "<td>" + fmt(harvestedCount, 0) + "</td>" +
+        "<td><span class=\"fcr-badge " + survivalBadgeClass(survivalRate) + "\">" + (survivalRate === null ? "-" : fmt(survivalRate, 1) + "%") + "</span></td>" +
         "<td>" + fmt(r.totalFeed, 2) + "</td>" +
         "<td><span class=\"fcr-badge " + fcrBadgeClass(fcr) + "\">" + (fcr === null ? "-" : fmt(fcr, 2)) + "</span></td>" +
         "<td>" + fmt(value, 2) + "</td>" +
@@ -253,8 +285,11 @@
       var totalFeed = Math.max.apply(null, g.entries.map(function (r) { return r.totalFeed; }));
       var totalValue = g.entries.reduce(function (s, r) { return s + r.catchAmount * r.price; }, 0);
       var maxDays = Math.max.apply(null, g.entries.map(function (r) { return r.cultureDays; }));
+      var stockingCount = Math.max.apply(null, g.entries.map(function (r) { return r.stockingCount || 0; }));
+      var totalHarvestedCount = g.entries.reduce(function (s, r) { return s + calcHarvestedCount(r.catchAmount, r.size); }, 0);
       var lastEntry = g.entries.slice().sort(function (a, b) { return (a.harvestDate || "").localeCompare(b.harvestDate || ""); }).pop();
       var fcr = calcFcr(totalFeed, totalCatch);
+      var survivalRate = calcSurvivalRate(stockingCount, totalHarvestedCount);
       var avgPrice = totalCatch ? totalValue / totalCatch : 0;
 
       return (
@@ -263,10 +298,12 @@
           "<div class=\"row\"><span>จำนวนครั้งที่จับ</span><span>" + g.entries.length + " ครั้ง</span></div>" +
           "<div class=\"row\"><span>วันเลี้ยงสูงสุด</span><span>" + fmt(maxDays, 0) + " วัน</span></div>" +
           "<div class=\"row\"><span>ไซส์ล่าสุด</span><span>" + fmt(lastEntry.size, 1) + " ตัว/กก.</span></div>" +
-          "<div class=\"row\"><span>จำนวนจับรวม</span><span>" + fmt(totalCatch, 2) + " กก.</span></div>" +
+          "<div class=\"row\"><span>จำนวนปล่อย</span><span>" + fmt(stockingCount, 0) + " ตัว</span></div>" +
+          "<div class=\"row\"><span>จำนวนจับรวม</span><span>" + fmt(totalCatch, 2) + " กก. (" + fmt(totalHarvestedCount, 0) + " ตัว)</span></div>" +
           "<div class=\"row\"><span>อาหารรวม (สะสม)</span><span>" + fmt(totalFeed, 2) + " กก.</span></div>" +
           "<div class=\"row\"><span>ราคาเฉลี่ย</span><span>" + fmt(avgPrice, 2) + " บาท/กก.</span></div>" +
           "<div class=\"row\"><span>มูลค่ารวม</span><span>" + fmt(totalValue, 2) + " บาท</span></div>" +
+          "<div class=\"fcr-line\"><span>อัตรารอดทั้งบ่อ</span><span class=\"fcr-badge " + survivalBadgeClass(survivalRate) + "\">" + (survivalRate === null ? "-" : fmt(survivalRate, 1) + "%") + "</span></div>" +
           "<div class=\"fcr-line\"><span>FCR รวมทั้งบ่อ</span><span class=\"fcr-badge " + fcrBadgeClass(fcr) + "\">" + (fcr === null ? "-" : fmt(fcr, 2)) + "</span></div>" +
         "</div>"
       );
@@ -280,19 +317,27 @@
     var totalValue = records.reduce(function (s, r) { return s + r.catchAmount * r.price; }, 0);
 
     var feedByPond = {};
+    var stockingByPond = {};
     records.forEach(function (r) {
       var key = r.farm + "||" + r.pond;
       feedByPond[key] = Math.max(feedByPond[key] || 0, r.totalFeed);
+      stockingByPond[key] = Math.max(stockingByPond[key] || 0, r.stockingCount || 0);
     });
     var totalFeed = Object.values(feedByPond).reduce(function (s, v) { return s + v; }, 0);
+    var totalStocking = Object.values(stockingByPond).reduce(function (s, v) { return s + v; }, 0);
+    var totalHarvestedCount = records.reduce(function (s, r) { return s + calcHarvestedCount(r.catchAmount, r.size); }, 0);
     var overallFcr = calcFcr(totalFeed, totalCatch);
+    var overallSurvival = calcSurvivalRate(totalStocking, totalHarvestedCount);
 
     var stats = [
       { label: "จำนวนรายการ", value: totalRecords },
       { label: "จำนวนบ่อที่บันทึก", value: pondKeys.size },
+      { label: "จำนวนปล่อยรวม (ตัว)", value: fmt(totalStocking, 0) },
       { label: "จับรวมทั้งหมด (กก.)", value: fmt(totalCatch, 2) },
+      { label: "จับรวมทั้งหมด (ตัว)", value: fmt(totalHarvestedCount, 0) },
       { label: "อาหารรวมทั้งหมด (กก.)", value: fmt(totalFeed, 2) },
       { label: "มูลค่ารวม (บาท)", value: fmt(totalValue, 2) },
+      { label: "อัตรารอดเฉลี่ยรวม", value: overallSurvival === null ? "-" : fmt(overallSurvival, 1) + "%" },
       { label: "FCR เฉลี่ยรวม", value: overallFcr === null ? "-" : fmt(overallFcr, 2) }
     ];
 
@@ -303,12 +348,15 @@
 
   function exportCsv() {
     if (records.length === 0) return;
-    var header = ["วันที่จับ", "ฟาร์ม", "บ่อ", "ไซส์", "ราคา", "วันเลี้ยง", "จำนวนจับ(กก.)", "อาหารรวม(กก.)", "FCR", "มูลค่า(บาท)"];
+    var header = ["วันที่จับ", "ฟาร์ม", "บ่อ", "ไซส์", "ราคา", "วันเลี้ยง", "จำนวนปล่อย(ตัว)", "จำนวนจับ(กก.)", "จำนวนจับ(ตัว)", "อัตรารอด(%)", "อาหารรวม(กก.)", "FCR", "มูลค่า(บาท)"];
     var rows = records.map(function (r) {
       var fcr = calcFcr(r.totalFeed, r.catchAmount);
+      var harvestedCount = calcHarvestedCount(r.catchAmount, r.size);
+      var survivalRate = calcSurvivalRate(r.stockingCount, harvestedCount);
       return [
-        r.harvestDate, r.farm, r.pond, r.size, r.price, r.cultureDays,
-        r.catchAmount, r.totalFeed, fcr === null ? "" : fcr.toFixed(2), (r.catchAmount * r.price).toFixed(2)
+        r.harvestDate, r.farm, r.pond, r.size, r.price, r.cultureDays, r.stockingCount,
+        r.catchAmount, harvestedCount.toFixed(0), survivalRate === null ? "" : survivalRate.toFixed(1),
+        r.totalFeed, fcr === null ? "" : fcr.toFixed(2), (r.catchAmount * r.price).toFixed(2)
       ];
     });
     var csv = "﻿" + [header].concat(rows).map(function (row) {
