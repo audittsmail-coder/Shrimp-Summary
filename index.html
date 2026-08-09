@@ -12,6 +12,7 @@
   <header class="app-header">
     <h1>🦐 สรุปรายการจับกุ้ง</h1>
     <p class="subtitle">บันทึกการจับกุ้งรายบ่อ พร้อมปิดยอดและคำนวณ FCR อัตโนมัติ</p>
+    <span id="sync-status" class="sync-status">🔄 กำลังเชื่อมต่อฐานข้อมูล...</span>
   </header>
 
   <section class="card">
@@ -127,6 +128,9 @@
   </section>
 
 </div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -1,8 +1,6 @@
 (function () {
   "use strict";
 
-  var STORAGE_KEY = "shrimp-harvest-records";
-
   var form = document.getElementById("harvest-form");
   var recordIdInput = document.getElementById("record-id");
   var farmInput = document.getElementById("farm");
@@ -26,25 +24,35 @@
   var overallSummaryEl = document.getElementById("overall-summary");
   var farmListEl = document.getElementById("farm-list");
   var pondListEl = document.getElementById("pond-list");
+  var syncStatusEl = document.getElementById("sync-status");
 
-  var records = loadRecords();
+  var records = [];
+  var dataLoaded = false;
+  var recordsRef = firebase.database().ref("harvestRecords");
 
-  function loadRecords() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      return [];
+  firebase.database().ref(".info/connected").on("value", function (snap) {
+    if (snap.val() === true) {
+      syncStatusEl.textContent = "✅ เชื่อมต่อฐานข้อมูลแล้ว";
+      syncStatusEl.className = "sync-status ok";
+    } else {
+      syncStatusEl.textContent = "⚠️ ขาดการเชื่อมต่อ (ข้อมูลจะซิงค์เมื่อกลับมาออนไลน์)";
+      syncStatusEl.className = "sync-status offline";
     }
-  }
+  });
 
-  function saveRecords() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-  }
-
-  function uid() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  }
+  recordsRef.on("value", function (snapshot) {
+    var data = snapshot.val() || {};
+    records = Object.keys(data).map(function (key) {
+      var r = data[key];
+      r.id = key;
+      return r;
+    });
+    dataLoaded = true;
+    renderAll();
+  }, function (error) {
+    syncStatusEl.textContent = "❌ เชื่อมต่อฐานข้อมูลไม่สำเร็จ: " + error.message;
+    syncStatusEl.className = "sync-status error";
+  });
 
   function toNumber(v) {
     var n = parseFloat(v);
@@ -98,8 +106,8 @@
   form.addEventListener("submit", function (e) {
     e.preventDefault();
 
+    var id = recordIdInput.value || recordsRef.push().key;
     var record = {
-      id: recordIdInput.value || uid(),
       harvestDate: dateInput.value,
       farm: farmInput.value.trim(),
       pond: pondInput.value.trim(),
@@ -110,16 +118,17 @@
       totalFeed: toNumber(totalFeedInput.value)
     };
 
-    var existingIndex = records.findIndex(function (r) { return r.id === record.id; });
-    if (existingIndex >= 0) {
-      records[existingIndex] = record;
-    } else {
-      records.push(record);
-    }
-
-    saveRecords();
-    resetForm();
-    renderAll();
+    submitBtn.disabled = true;
+    recordsRef.child(id).set(record)
+      .then(function () {
+        resetForm();
+      })
+      .catch(function (error) {
+        alert("บันทึกรายการไม่สำเร็จ: " + error.message);
+      })
+      .finally(function () {
+        submitBtn.disabled = false;
+      });
   });
 
   function startEdit(id) {
@@ -143,9 +152,9 @@
 
   function deleteRecord(id) {
     if (!confirm("ต้องการลบรายการนี้หรือไม่?")) return;
-    records = records.filter(function (r) { return r.id !== id; });
-    saveRecords();
-    renderAll();
+    recordsRef.child(id).remove().catch(function (error) {
+      alert("ลบรายการไม่สำเร็จ: " + error.message);
+    });
   }
 
   function renderDatalists() {
@@ -171,6 +180,7 @@
       .sort(function (a, b) { return (b.harvestDate || "").localeCompare(a.harvestDate || ""); });
 
     recordsBody.innerHTML = "";
+    emptyState.textContent = dataLoaded ? "ยังไม่มีรายการ เริ่มบันทึกรายการจับกุ้งด้านบนได้เลย" : "กำลังโหลดข้อมูล...";
     emptyState.classList.toggle("hidden", records.length !== 0);
 
     filtered.forEach(function (r) {
@@ -322,3 +332,4 @@
   updatePreview();
   renderAll();
 })();
+

@@ -45,6 +45,32 @@ body {
   font-size: 0.95rem;
 }
 
+.sync-status {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--border);
+  color: var(--muted);
+}
+
+.sync-status.ok {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.sync-status.offline {
+  background: #fef9c3;
+  color: #a16207;
+}
+
+.sync-status.error {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
 .card {
   background: var(--card-bg);
   border-radius: var(--radius);
