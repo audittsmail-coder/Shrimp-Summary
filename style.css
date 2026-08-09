@@ -1,17 +1,20 @@
 :root {
-  --bg: #f4f7f6;
-  --card-bg: #ffffff;
-  --text: #1f2d2b;
-  --muted: #6b7d79;
-  --border: #e1e8e6;
-  --primary: #0f766e;
-  --primary-dark: #0b5c56;
-  --primary-light: #e6f4f2;
-  --accent: #f59e0b;
-  --danger: #dc2626;
-  --danger-light: #fdecec;
+  --bg: #0a0f0e;
+  --card-bg: #141c1a;
+  --input-bg: #0f1715;
+  --text: #eaf3f0;
+  --muted: #8aa39d;
+  --border: #263431;
+  --primary: #2dd4bf;
+  --primary-dark: #22b8a4;
+  --primary-text: #5eead4;
+  --primary-light: rgba(45, 212, 191, 0.14);
+  --on-primary: #04211d;
+  --accent: #fbbf24;
+  --danger: #f87171;
+  --danger-light: rgba(248, 113, 113, 0.14);
   --radius: 10px;
-  --shadow: 0 1px 3px rgba(15, 40, 35, 0.08), 0 1px 2px rgba(15, 40, 35, 0.06);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 * { box-sizing: border-box; }
@@ -21,6 +24,7 @@ body {
   font-family: "Sarabun", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg);
   color: var(--text);
+  color-scheme: dark;
 }
 
 .app {
@@ -57,13 +61,13 @@ body {
 }
 
 .sync-status.ok {
-  background: #dcfce7;
-  color: #15803d;
+  background: rgba(34, 197, 94, 0.16);
+  color: #4ade80;
 }
 
 .sync-status.offline {
-  background: #fef9c3;
-  color: #a16207;
+  background: rgba(250, 204, 21, 0.16);
+  color: #facc15;
 }
 
 .sync-status.error {
@@ -117,8 +121,17 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 0.95rem;
-  background: #fff;
+  background: var(--input-bg);
   color: var(--text);
+}
+
+.field input::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.field input[type="date"] {
+  color-scheme: dark;
 }
 
 .field input:focus {
@@ -132,7 +145,7 @@ body {
   background: var(--primary-light);
   border-radius: 8px;
   font-weight: 700;
-  color: var(--primary-dark);
+  color: var(--primary-text);
 }
 
 .hint {
@@ -159,7 +172,7 @@ body {
 
 .btn-primary {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .btn-primary:hover {
@@ -168,7 +181,7 @@ body {
 
 .btn-ghost {
   background: transparent;
-  color: var(--primary-dark);
+  color: var(--primary-text);
   border: 1px solid var(--border);
 }
 
@@ -236,7 +249,7 @@ th {
 }
 
 tbody tr:hover {
-  background: #fafcfb;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .fcr-badge {
@@ -246,8 +259,8 @@ tbody tr:hover {
   font-size: 0.82rem;
 }
 
-.fcr-good { background: #dcfce7; color: #15803d; }
-.fcr-ok { background: #fef9c3; color: #a16207; }
+.fcr-good { background: rgba(34, 197, 94, 0.16); color: #4ade80; }
+.fcr-ok { background: rgba(250, 204, 21, 0.16); color: #facc15; }
 .fcr-bad { background: var(--danger-light); color: var(--danger); }
 
 .row-actions {
@@ -271,13 +284,13 @@ tbody tr:hover {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px 16px;
-  background: linear-gradient(180deg, #fff, #fbfdfc);
+  background: linear-gradient(180deg, var(--card-bg), #101816);
 }
 
 .pond-card h3 {
   margin: 0 0 8px;
   font-size: 1rem;
-  color: var(--primary-dark);
+  color: var(--primary-text);
 }
 
 .pond-card .row {
@@ -319,7 +332,7 @@ tbody tr:hover {
 .stat .stat-value {
   font-size: 1.4rem;
   font-weight: 800;
-  color: var(--primary-dark);
+  color: var(--primary-text);
 }
 
 .stat .stat-label {
