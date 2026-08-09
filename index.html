@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สรุปรายการจับกุ้ง</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="app-header">
+    <h1>🦐 สรุปรายการจับกุ้ง</h1>
+    <p class="subtitle">บันทึกการจับกุ้งรายบ่อ พร้อมปิดยอดและคำนวณ FCR อัตโนมัติ</p>
+  </header>
+
+  <section class="card">
+    <div class="card-header">
+      <h2 id="form-title">เพิ่มรายการจับกุ้ง</h2>
+      <button id="cancel-edit-btn" class="btn btn-ghost hidden" type="button">ยกเลิกการแก้ไข</button>
+    </div>
+    <form id="harvest-form" class="grid-form" autocomplete="off">
+      <input type="hidden" id="record-id">
+
+      <div class="field">
+        <label for="harvestDate">วันที่จับ</label>
+        <input type="date" id="harvestDate" required>
+      </div>
+
+      <div class="field">
+        <label for="farm">ฟาร์มที่</label>
+        <input type="text" id="farm" list="farm-list" placeholder="เช่น ฟาร์ม A" required>
+        <datalist id="farm-list"></datalist>
+      </div>
+
+      <div class="field">
+        <label for="pond">บ่อที่</label>
+        <input type="text" id="pond" list="pond-list" placeholder="เช่น บ่อ 1" required>
+        <datalist id="pond-list"></datalist>
+      </div>
+
+      <div class="field">
+        <label for="size">ขนาดไซส์ (ตัว/กก.)</label>
+        <input type="number" id="size" min="0" step="0.1" placeholder="เช่น 50" required>
+      </div>
+
+      <div class="field">
+        <label for="price">ราคา (บาท/กก.)</label>
+        <input type="number" id="price" min="0" step="0.01" placeholder="เช่น 150" required>
+      </div>
+
+      <div class="field">
+        <label for="cultureDays">จำนวนวันที่เลี้ยง (วัน)</label>
+        <input type="number" id="cultureDays" min="0" step="1" placeholder="เช่น 90" required>
+      </div>
+
+      <div class="field">
+        <label for="catchAmount">จำนวนที่จับ (กก.)</label>
+        <input type="number" id="catchAmount" min="0" step="0.01" placeholder="เช่น 500" required>
+      </div>
+
+      <div class="field">
+        <label for="totalFeed">อาหารรวมทั้งหมด (กก.)</label>
+        <input type="number" id="totalFeed" min="0" step="0.01" placeholder="เช่น 750" required>
+        <span class="hint">กรณีจับหลายรอบต่อบ่อ ให้กรอกยอดอาหารสะสมล่าสุดของบ่อนั้น</span>
+      </div>
+
+      <div class="field field-readonly">
+        <label>FCR (ประมาณการรายการนี้)</label>
+        <output id="fcr-preview">-</output>
+      </div>
+
+      <div class="field field-readonly">
+        <label>มูลค่ารายการนี้ (บาท)</label>
+        <output id="value-preview">-</output>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="submit-btn">＋ บันทึกรายการ</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>รายการทั้งหมด</h2>
+      <div class="toolbar">
+        <input type="text" id="search-input" placeholder="ค้นหาฟาร์ม / บ่อ...">
+        <button id="export-csv-btn" class="btn btn-ghost" type="button">⬇ ส่งออก CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="records-table">
+        <thead>
+          <tr>
+            <th>วันที่จับ</th>
+            <th>ฟาร์ม</th>
+            <th>บ่อ</th>
+            <th>ไซส์</th>
+            <th>ราคา/กก.</th>
+            <th>วันเลี้ยง</th>
+            <th>จำนวนจับ (กก.)</th>
+            <th>อาหารรวม (กก.)</th>
+            <th>FCR</th>
+            <th>มูลค่า (บาท)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="records-body"></tbody>
+      </table>
+      <p id="empty-state" class="empty-state hidden">ยังไม่มีรายการ เริ่มบันทึกรายการจับกุ้งด้านบนได้เลย</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>ปิดยอดต่อบ่อ</h2>
+    </div>
+    <div id="pond-summary" class="pond-grid"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>สรุปภาพรวม</h2>
+    </div>
+    <div class="overall-grid" id="overall-summary"></div>
+  </section>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>
