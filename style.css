@@ -170,6 +170,11 @@ body {
   transition: background 0.15s, opacity 0.15s;
 }
 
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .btn-primary {
   background: var(--primary);
   color: var(--on-primary);

@@ -505,34 +505,93 @@
     return parseFloat(cleaned);
   }
 
+  var BULK_FIELD_DEFS = [
+    { key: "harvestDate", label: "วันที่จับ" },
+    { key: "stockingDate", label: "วันที่ปล่อยกุ้ง" },
+    { key: "farm", label: "ฟาร์ม" },
+    { key: "pond", label: "บ่อ" },
+    { key: "size", label: "ไซส์" },
+    { key: "price", label: "ราคา" },
+    { key: "stockingCount", label: "จำนวนปล่อย" },
+    { key: "catchAmount", label: "จำนวนที่จับ" },
+    { key: "totalFeed", label: "อาหารรวม" }
+  ];
+  var BULK_DEFAULT_MAP = { harvestDate: 0, stockingDate: 1, farm: 2, pond: 3, size: 4, price: 5, stockingCount: 6, catchAmount: 7, totalFeed: 8 };
+
+  function detectFieldFromHeader(header) {
+    var h = (header || "").toLowerCase().replace(/\s+/g, "");
+    if (h.indexOf("วัน") !== -1) {
+      if (h.indexOf("ปล่อย") !== -1) return "stockingDate";
+      if (h.indexOf("จับ") !== -1 || h.indexOf("เก็บ") !== -1 || h.indexOf("harvest") !== -1) return "harvestDate";
+    }
+    if (h.indexOf("ฟาร์ม") !== -1 || h.indexOf("farm") !== -1) return "farm";
+    if (h.indexOf("บ่อ") !== -1 || h.indexOf("pond") !== -1) return "pond";
+    if (h.indexOf("ไซส์") !== -1 || h.indexOf("ไซซ์") !== -1 || h.indexOf("ขนาด") !== -1 || h.indexOf("size") !== -1) return "size";
+    if (h.indexOf("ราคา") !== -1 || h.indexOf("price") !== -1) return "price";
+    if (h.indexOf("อาหาร") !== -1 || h.indexOf("feed") !== -1) return "totalFeed";
+    if (h.indexOf("ปล่อย") !== -1 || h.indexOf("stock") !== -1) return "stockingCount";
+    if (h.indexOf("จับ") !== -1 || h.indexOf("catch") !== -1) return "catchAmount";
+    return null;
+  }
+
+  function buildBulkColumnMap(headerCells) {
+    var map = {};
+    headerCells.forEach(function (cellText, idx) {
+      var field = detectFieldFromHeader(cellText);
+      if (field && map[field] === undefined) map[field] = idx;
+    });
+    return map;
+  }
+
   function parseBulkText(text) {
     var lines = text.split(/\r\n|\r|\n/).map(function (l) { return l.trim(); }).filter(Boolean);
-    if (lines.length === 0) return [];
+    if (lines.length === 0) return { rows: [], headerError: null };
 
     var delimiter = lines[0].indexOf("\t") !== -1 ? "\t" : ",";
+    var firstCells = lines[0].split(delimiter).map(function (c) { return c.trim(); });
 
-    var firstCells = lines[0].split(delimiter);
-    if (parseDateFlexible(firstCells[0]) === null) {
-      lines = lines.slice(1);
+    var detectedMap = buildBulkColumnMap(firstCells);
+    var matchedCount = Object.keys(detectedMap).length;
+    var columnMap;
+    var dataLines;
+
+    if (matchedCount >= 6) {
+      // First row looks like a header — match columns by their label text.
+      var missing = BULK_FIELD_DEFS.filter(function (f) { return detectedMap[f.key] === undefined; });
+      if (missing.length > 0) {
+        return {
+          rows: [],
+          headerError: "ไม่พบคอลัมน์ในหัวตาราง: " + missing.map(function (f) { return f.label; }).join(", ") +
+            " กรุณาตรวจสอบชื่อหัวข้อคอลัมน์ในแถวแรกแล้วลองใหม่"
+        };
+      }
+      columnMap = detectedMap;
+      dataLines = lines.slice(1);
+    } else {
+      // No recognizable header — assume the fixed column order.
+      columnMap = BULK_DEFAULT_MAP;
+      dataLines = parseDateFlexible(firstCells[0]) === null ? lines.slice(1) : lines;
     }
 
-    return lines.map(function (line, index) {
+    var minCols = Math.max.apply(null, Object.keys(columnMap).map(function (k) { return columnMap[k]; })) + 1;
+
+    var rows = dataLines.map(function (line, index) {
       var cells = line.split(delimiter).map(function (c) { return c.trim(); });
       var errors = [];
 
-      if (cells.length < 9) {
-        errors.push("จำนวนคอลัมน์ไม่ครบ (ต้องมี 9 คอลัมน์ พบ " + cells.length + ")");
+      if (cells.length < minCols) {
+        errors.push("จำนวนคอลัมน์ไม่ครบ (ต้องมีอย่างน้อย " + minCols + " คอลัมน์ พบ " + cells.length + ")");
       }
 
-      var harvestDate = parseDateFlexible(cells[0]);
-      var stockingDate = parseDateFlexible(cells[1]);
-      var farm = (cells[2] || "").trim();
-      var pond = (cells[3] || "").trim();
-      var size = parseNumberFlexible(cells[4]);
-      var price = parseNumberFlexible(cells[5]);
-      var stockingCount = parseNumberFlexible(cells[6]);
-      var catchAmount = parseNumberFlexible(cells[7]);
-      var totalFeed = parseNumberFlexible(cells[8]);
+      var harvestDate = parseDateFlexible(cells[columnMap.harvestDate]);
+      var stockingDate = parseDateFlexible(cells[columnMap.stockingDate]);
+      var farm = (cells[columnMap.farm] || "").trim();
+      var pond = (cells[columnMap.pond] || "").trim();
+      var size = parseNumberFlexible(cells[columnMap.size]);
+      var price = parseNumberFlexible(cells[columnMap.price]);
+      var stockingCount = parseNumberFlexible(cells[columnMap.stockingCount]);
+      var catchAmount = parseNumberFlexible(cells[columnMap.catchAmount]);
+      var totalFeed = parseNumberFlexible(cells[columnMap.totalFeed]);
 
       if (!harvestDate) errors.push("วันที่จับไม่ถูกต้อง");
       if (!stockingDate) errors.push("วันที่ปล่อยไม่ถูกต้อง");
@@ -565,13 +624,24 @@
         valid: errors.length === 0
       };
     });
+
+    return { rows: rows, headerError: null };
   }
 
   var bulkParsedRows = [];
 
-  function renderBulkPreview(rows) {
+  function renderBulkPreview(result) {
+    var rows = result.rows;
     bulkParsedRows = rows;
     var validCount = rows.filter(function (r) { return r.valid; }).length;
+
+    if (result.headerError) {
+      bulkPreviewWrap.classList.add("hidden");
+      bulkImportBtn.classList.add("hidden");
+      bulkClearBtn.classList.remove("hidden");
+      bulkSummaryEl.textContent = "⚠️ " + result.headerError;
+      return;
+    }
 
     if (rows.length === 0) {
       bulkPreviewWrap.classList.add("hidden");
@@ -605,13 +675,16 @@
 
     bulkPreviewWrap.classList.remove("hidden");
     bulkClearBtn.classList.remove("hidden");
-    bulkSummaryEl.textContent = "พบ " + rows.length + " แถว — ถูกต้อง " + validCount + " แถว, ผิดพลาด " + (rows.length - validCount) + " แถว";
+    bulkImportBtn.classList.remove("hidden");
 
     if (validCount > 0) {
-      bulkImportBtn.classList.remove("hidden");
+      bulkSummaryEl.textContent = "พบ " + rows.length + " แถว — ถูกต้อง " + validCount + " แถว, ผิดพลาด " + (rows.length - validCount) + " แถว";
+      bulkImportBtn.disabled = false;
       bulkImportBtn.textContent = "นำเข้า " + validCount + " รายการที่ถูกต้อง";
     } else {
-      bulkImportBtn.classList.add("hidden");
+      bulkSummaryEl.textContent = "⚠️ พบ " + rows.length + " แถว แต่ผิดพลาดทั้งหมด — ดูสถานะแต่ละแถวด้านล่าง แก้ไขข้อมูลแล้วกด \"ตรวจสอบข้อมูล\" ใหม่";
+      bulkImportBtn.disabled = true;
+      bulkImportBtn.textContent = "นำเข้า 0 รายการ";
     }
   }
 
