@@ -46,6 +46,13 @@
   var farmListEl = document.getElementById("farm-list");
   var pondListEl = document.getElementById("pond-list");
   var syncStatusEl = document.getElementById("sync-status");
+  var bulkTextarea = document.getElementById("bulk-import-textarea");
+  var bulkPreviewBtn = document.getElementById("bulk-preview-btn");
+  var bulkImportBtn = document.getElementById("bulk-import-btn");
+  var bulkClearBtn = document.getElementById("bulk-clear-btn");
+  var bulkSummaryEl = document.getElementById("bulk-summary");
+  var bulkPreviewWrap = document.getElementById("bulk-preview-wrap");
+  var bulkPreviewBody = document.getElementById("bulk-preview-body");
 
   var records = [];
   var dataLoaded = false;
@@ -459,6 +466,206 @@
   }
 
   exportCsvBtn.addEventListener("click", exportCsv);
+
+  function beToCe(year) {
+    return year > 2400 ? year - 543 : year;
+  }
+
+  function pad2(n) {
+    return String(n).length < 2 ? "0" + n : String(n);
+  }
+
+  function parseDateFlexible(str) {
+    str = (str || "").trim();
+    if (!str) return null;
+
+    var iso = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (iso) {
+      var isoYear = beToCe(parseInt(iso[1], 10));
+      return isoYear + "-" + pad2(iso[2]) + "-" + pad2(iso[3]);
+    }
+
+    var dmy = str.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
+    if (dmy) {
+      var day = dmy[1];
+      var month = dmy[2];
+      var yearRaw = dmy[3];
+      var year = yearRaw.length === 2 ? 2000 + parseInt(yearRaw, 10) : parseInt(yearRaw, 10);
+      year = beToCe(year);
+      if (parseInt(month, 10) > 12) return null;
+      return year + "-" + pad2(month) + "-" + pad2(day);
+    }
+
+    return null;
+  }
+
+  function parseNumberFlexible(str) {
+    var cleaned = String(str === undefined || str === null ? "" : str).replace(/,/g, "").trim();
+    if (cleaned === "") return NaN;
+    return parseFloat(cleaned);
+  }
+
+  function parseBulkText(text) {
+    var lines = text.split(/\r\n|\r|\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+    if (lines.length === 0) return [];
+
+    var delimiter = lines[0].indexOf("\t") !== -1 ? "\t" : ",";
+
+    var firstCells = lines[0].split(delimiter);
+    if (parseDateFlexible(firstCells[0]) === null) {
+      lines = lines.slice(1);
+    }
+
+    return lines.map(function (line, index) {
+      var cells = line.split(delimiter).map(function (c) { return c.trim(); });
+      var errors = [];
+
+      if (cells.length < 9) {
+        errors.push("จำนวนคอลัมน์ไม่ครบ (ต้องมี 9 คอลัมน์ พบ " + cells.length + ")");
+      }
+
+      var harvestDate = parseDateFlexible(cells[0]);
+      var stockingDate = parseDateFlexible(cells[1]);
+      var farm = (cells[2] || "").trim();
+      var pond = (cells[3] || "").trim();
+      var size = parseNumberFlexible(cells[4]);
+      var price = parseNumberFlexible(cells[5]);
+      var stockingCount = parseNumberFlexible(cells[6]);
+      var catchAmount = parseNumberFlexible(cells[7]);
+      var totalFeed = parseNumberFlexible(cells[8]);
+
+      if (!harvestDate) errors.push("วันที่จับไม่ถูกต้อง");
+      if (!stockingDate) errors.push("วันที่ปล่อยไม่ถูกต้อง");
+      if (!farm) errors.push("ไม่มีชื่อฟาร์ม");
+      if (!pond) errors.push("ไม่มีชื่อบ่อ");
+      if (isNaN(size) || size <= 0) errors.push("ไซส์ไม่ถูกต้อง");
+      if (isNaN(price) || price < 0) errors.push("ราคาไม่ถูกต้อง");
+      if (isNaN(stockingCount) || stockingCount <= 0) errors.push("จำนวนปล่อยไม่ถูกต้อง");
+      if (isNaN(catchAmount) || catchAmount <= 0) errors.push("จำนวนที่จับไม่ถูกต้อง");
+      if (isNaN(totalFeed) || totalFeed < 0) errors.push("อาหารรวมไม่ถูกต้อง");
+
+      var cultureDays = errors.length === 0 ? calcCultureDays(stockingDate, harvestDate) : null;
+      if (errors.length === 0 && cultureDays === null) {
+        errors.push("วันที่ปล่อยต้องมาก่อนวันที่จับ");
+      }
+
+      return {
+        rowNumber: index + 1,
+        harvestDate: harvestDate,
+        stockingDate: stockingDate,
+        farm: farm,
+        pond: pond,
+        size: size,
+        price: price,
+        stockingCount: stockingCount,
+        catchAmount: catchAmount,
+        totalFeed: totalFeed,
+        cultureDays: cultureDays,
+        errors: errors,
+        valid: errors.length === 0
+      };
+    });
+  }
+
+  var bulkParsedRows = [];
+
+  function renderBulkPreview(rows) {
+    bulkParsedRows = rows;
+    var validCount = rows.filter(function (r) { return r.valid; }).length;
+
+    if (rows.length === 0) {
+      bulkPreviewWrap.classList.add("hidden");
+      bulkImportBtn.classList.add("hidden");
+      bulkClearBtn.classList.add("hidden");
+      bulkSummaryEl.textContent = "ไม่พบข้อมูลที่วางเข้ามา";
+      return;
+    }
+
+    bulkPreviewBody.innerHTML = rows.map(function (r) {
+      var statusCell = r.valid
+        ? "<span class=\"fcr-badge status-ok\">✅ ถูกต้อง</span>"
+        : "<span class=\"fcr-badge status-bad\" title=\"" + escapeHtml(r.errors.join(", ")) + "\">❌ " + escapeHtml(r.errors[0]) + "</span>";
+      return (
+        "<tr>" +
+        "<td>" + r.rowNumber + "</td>" +
+        "<td>" + escapeHtml(r.harvestDate || "-") + "</td>" +
+        "<td>" + escapeHtml(r.stockingDate || "-") + "</td>" +
+        "<td>" + escapeHtml(r.farm || "-") + "</td>" +
+        "<td>" + escapeHtml(r.pond || "-") + "</td>" +
+        "<td>" + (isNaN(r.size) ? "-" : fmt(r.size, 1)) + "</td>" +
+        "<td>" + (isNaN(r.price) ? "-" : fmt(r.price, 2)) + "</td>" +
+        "<td>" + (isNaN(r.stockingCount) ? "-" : fmt(r.stockingCount, 0)) + "</td>" +
+        "<td>" + (isNaN(r.catchAmount) ? "-" : fmt(r.catchAmount, 2)) + "</td>" +
+        "<td>" + (isNaN(r.totalFeed) ? "-" : fmt(r.totalFeed, 2)) + "</td>" +
+        "<td>" + (r.cultureDays === null ? "-" : fmt(r.cultureDays, 0)) + "</td>" +
+        "<td>" + statusCell + "</td>" +
+        "</tr>"
+      );
+    }).join("");
+
+    bulkPreviewWrap.classList.remove("hidden");
+    bulkClearBtn.classList.remove("hidden");
+    bulkSummaryEl.textContent = "พบ " + rows.length + " แถว — ถูกต้อง " + validCount + " แถว, ผิดพลาด " + (rows.length - validCount) + " แถว";
+
+    if (validCount > 0) {
+      bulkImportBtn.classList.remove("hidden");
+      bulkImportBtn.textContent = "นำเข้า " + validCount + " รายการที่ถูกต้อง";
+    } else {
+      bulkImportBtn.classList.add("hidden");
+    }
+  }
+
+  bulkPreviewBtn.addEventListener("click", function () {
+    renderBulkPreview(parseBulkText(bulkTextarea.value));
+  });
+
+  bulkClearBtn.addEventListener("click", function () {
+    bulkTextarea.value = "";
+    bulkParsedRows = [];
+    bulkPreviewWrap.classList.add("hidden");
+    bulkImportBtn.classList.add("hidden");
+    bulkClearBtn.classList.add("hidden");
+    bulkSummaryEl.textContent = "";
+  });
+
+  bulkImportBtn.addEventListener("click", function () {
+    var validRows = bulkParsedRows.filter(function (r) { return r.valid; });
+    if (validRows.length === 0) return;
+
+    var updates = {};
+    validRows.forEach(function (r) {
+      var id = recordsRef.push().key;
+      updates[id] = {
+        harvestDate: r.harvestDate,
+        stockingDate: r.stockingDate,
+        farm: r.farm,
+        pond: r.pond,
+        size: r.size,
+        price: r.price,
+        cultureDays: r.cultureDays,
+        stockingCount: r.stockingCount,
+        catchAmount: r.catchAmount,
+        totalFeed: r.totalFeed
+      };
+    });
+
+    bulkImportBtn.disabled = true;
+    recordsRef.update(updates)
+      .then(function () {
+        bulkTextarea.value = "";
+        bulkParsedRows = [];
+        bulkPreviewWrap.classList.add("hidden");
+        bulkImportBtn.classList.add("hidden");
+        bulkClearBtn.classList.add("hidden");
+        bulkSummaryEl.textContent = "นำเข้าสำเร็จ " + validRows.length + " รายการ";
+      })
+      .catch(function (error) {
+        alert("นำเข้าข้อมูลไม่สำเร็จ: " + error.message);
+      })
+      .finally(function () {
+        bulkImportBtn.disabled = false;
+      });
+  });
 
   function renderAll() {
     renderDatalists();

@@ -111,6 +111,45 @@
 
   <section class="card">
     <div class="card-header">
+      <h2>นำเข้าข้อมูลจากตาราง</h2>
+    </div>
+    <p class="hint">
+      คัดลอกข้อมูลจาก Excel / Google Sheets มาวางในช่องด้านล่างได้เลย โดยเรียงคอลัมน์ตามนี้ (คั่นด้วย Tab หรือ comma):<br>
+      <strong>วันที่จับ | วันที่ปล่อยกุ้ง | ฟาร์ม | บ่อ | ไซส์(ตัว/กก.) | ราคา(บาท/กก.) | จำนวนปล่อย(ตัว) | จำนวนที่จับ(กก.) | อาหารรวม(กก.)</strong><br>
+      รองรับวันที่แบบ YYYY-MM-DD หรือ DD/MM/YYYY (ปี พ.ศ. หรือ ค.ศ. ก็ได้) ถ้าวางแถวหัวตารางมาด้วยระบบจะข้ามให้อัตโนมัติ
+    </p>
+    <textarea id="bulk-import-textarea" rows="6" placeholder="วางข้อมูลตารางที่นี่..."></textarea>
+    <div class="form-actions">
+      <button type="button" id="bulk-preview-btn" class="btn btn-ghost">ตรวจสอบข้อมูล</button>
+      <button type="button" id="bulk-import-btn" class="btn btn-primary hidden">นำเข้าข้อมูล</button>
+      <button type="button" id="bulk-clear-btn" class="btn btn-ghost hidden">ล้าง</button>
+    </div>
+    <p id="bulk-summary" class="hint"></p>
+    <div id="bulk-preview-wrap" class="table-wrap hidden">
+      <table id="bulk-preview-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>วันที่จับ</th>
+            <th>วันที่ปล่อย</th>
+            <th>ฟาร์ม</th>
+            <th>บ่อ</th>
+            <th>ไซส์</th>
+            <th>ราคา</th>
+            <th>ปล่อย (ตัว)</th>
+            <th>จับ (กก.)</th>
+            <th>อาหาร (กก.)</th>
+            <th>วันเลี้ยง</th>
+            <th>สถานะ</th>
+          </tr>
+        </thead>
+        <tbody id="bulk-preview-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header">
       <h2>รายการทั้งหมด</h2>
       <div class="toolbar">
         <input type="text" id="search-input" placeholder="ค้นหาฟาร์ม / บ่อ...">
