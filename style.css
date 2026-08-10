@@ -230,7 +230,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
-  min-width: 1140px;
+  min-width: 1260px;
 }
 
 th, td {
@@ -275,6 +275,34 @@ tbody tr:hover {
 }
 
 .pond-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pond-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.pond-group-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--primary-text);
+}
+
+.cycle-count-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--border);
+  color: var(--muted);
+}
+
+.cycle-row {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 14px;
@@ -285,13 +313,31 @@ tbody tr:hover {
   border-radius: var(--radius);
   padding: 14px 16px;
   background: linear-gradient(180deg, var(--card-bg), #101816);
+  position: relative;
 }
 
-.pond-card h3 {
-  margin: 0 0 8px;
-  font-size: 1rem;
-  color: var(--primary-text);
+.pond-card .cycle-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 4px;
 }
+
+.pond-card.is-latest {
+  border-color: var(--primary-dark);
+}
+
+.delta {
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-left: 6px;
+}
+
+.delta-up { color: #4ade80; }
+.delta-down { color: #f87171; }
 
 .pond-card .row {
   display: flex;

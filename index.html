@@ -34,6 +34,12 @@
       </div>
 
       <div class="field">
+        <label for="stockingDate">วันที่ปล่อยกุ้ง (เริ่มรอบเลี้ยง)</label>
+        <input type="date" id="stockingDate" required>
+        <span class="hint">ใช้แยกรอบเลี้ยงของบ่อเดียวกัน ถ้าลงกุ้งรอบใหม่ในบ่อเดิม ให้ใส่วันที่ปล่อยรอบใหม่</span>
+      </div>
+
+      <div class="field">
         <label for="farm">ฟาร์มที่</label>
         <input type="text" id="farm" list="farm-list" placeholder="เช่น ฟาร์ม A" required>
         <datalist id="farm-list"></datalist>
@@ -56,11 +62,6 @@
       </div>
 
       <div class="field">
-        <label for="cultureDays">จำนวนวันที่เลี้ยง (วัน)</label>
-        <input type="number" id="cultureDays" min="0" step="1" placeholder="เช่น 90" required>
-      </div>
-
-      <div class="field">
         <label for="stockingCount">จำนวนปล่อยกุ้ง (ตัว)</label>
         <input type="number" id="stockingCount" min="0" step="1" placeholder="เช่น 500000" required>
         <span class="hint">กรอกจำนวนลูกกุ้งที่ปล่อยตอนเริ่มรอบเลี้ยงของบ่อนี้</span>
@@ -75,6 +76,11 @@
         <label for="totalFeed">อาหารรวมทั้งหมด (กก.)</label>
         <input type="number" id="totalFeed" min="0" step="0.01" placeholder="เช่น 750" required>
         <span class="hint">กรณีจับหลายรอบต่อบ่อ ให้กรอกยอดอาหารสะสมล่าสุดของบ่อนั้น</span>
+      </div>
+
+      <div class="field field-readonly">
+        <label>จำนวนวันที่เลี้ยง (คำนวณอัตโนมัติ)</label>
+        <output id="culture-days-preview">-</output>
       </div>
 
       <div class="field field-readonly">
@@ -116,6 +122,7 @@
         <thead>
           <tr>
             <th>วันที่จับ</th>
+            <th>วันที่ปล่อย</th>
             <th>ฟาร์ม</th>
             <th>บ่อ</th>
             <th>ไซส์</th>
