@@ -47,6 +47,7 @@
   var pondListEl = document.getElementById("pond-list");
   var syncStatusEl = document.getElementById("sync-status");
   var bulkTextarea = document.getElementById("bulk-import-textarea");
+  var bulkFileInput = document.getElementById("bulk-file-input");
   var bulkPreviewBtn = document.getElementById("bulk-preview-btn");
   var bulkImportBtn = document.getElementById("bulk-import-btn");
   var bulkClearBtn = document.getElementById("bulk-clear-btn");
@@ -543,17 +544,18 @@
     return map;
   }
 
-  function parseBulkText(text) {
-    var lines = text.split(/\r\n|\r|\n/).map(function (l) { return l.trim(); }).filter(Boolean);
-    if (lines.length === 0) return { rows: [], headerError: null };
+  function processBulkRows(allRows) {
+    allRows = allRows
+      .map(function (cells) { return cells.map(function (c) { return (c === undefined || c === null ? "" : String(c)).trim(); }); })
+      .filter(function (cells) { return cells.some(function (c) { return c !== ""; }); });
 
-    var delimiter = lines[0].indexOf("\t") !== -1 ? "\t" : ",";
-    var firstCells = lines[0].split(delimiter).map(function (c) { return c.trim(); });
+    if (allRows.length === 0) return { rows: [], headerError: null };
 
+    var firstCells = allRows[0];
     var detectedMap = buildBulkColumnMap(firstCells);
     var matchedCount = Object.keys(detectedMap).length;
     var columnMap;
-    var dataLines;
+    var dataRows;
 
     if (matchedCount >= 6) {
       // First row looks like a header — match columns by their label text.
@@ -566,17 +568,16 @@
         };
       }
       columnMap = detectedMap;
-      dataLines = lines.slice(1);
+      dataRows = allRows.slice(1);
     } else {
       // No recognizable header — assume the fixed column order.
       columnMap = BULK_DEFAULT_MAP;
-      dataLines = parseDateFlexible(firstCells[0]) === null ? lines.slice(1) : lines;
+      dataRows = parseDateFlexible(firstCells[0]) === null ? allRows.slice(1) : allRows;
     }
 
     var minCols = Math.max.apply(null, Object.keys(columnMap).map(function (k) { return columnMap[k]; })) + 1;
 
-    var rows = dataLines.map(function (line, index) {
-      var cells = line.split(delimiter).map(function (c) { return c.trim(); });
+    var rows = dataRows.map(function (cells, index) {
       var errors = [];
 
       if (cells.length < minCols) {
@@ -626,6 +627,52 @@
     });
 
     return { rows: rows, headerError: null };
+  }
+
+  function parseBulkText(text) {
+    var lines = text.split(/\r\n|\r|\n/).filter(function (l) { return l.trim() !== ""; });
+    if (lines.length === 0) return { rows: [], headerError: null };
+    var delimiter = lines[0].indexOf("\t") !== -1 ? "\t" : ",";
+    var allRows = lines.map(function (line) { return line.split(delimiter); });
+    return processBulkRows(allRows);
+  }
+
+  function parseSheetFile(file) {
+    var isCsv = /\.csv$/i.test(file.name) || file.type === "text/csv";
+
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onerror = function () { reject(new Error("อ่านไฟล์ไม่สำเร็จ")); };
+
+      if (isCsv) {
+        reader.onload = function () {
+          try {
+            resolve(parseBulkText(String(reader.result)));
+          } catch (e) {
+            reject(e);
+          }
+        };
+        reader.readAsText(file);
+        return;
+      }
+
+      reader.onload = function () {
+        try {
+          if (typeof XLSX === "undefined") {
+            reject(new Error("ไม่สามารถโหลดตัวอ่านไฟล์ Excel ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองใหม่"));
+            return;
+          }
+          var data = new Uint8Array(reader.result);
+          var workbook = XLSX.read(data, { type: "array" });
+          var sheet = workbook.Sheets[workbook.SheetNames[0]];
+          var allRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+          resolve(processBulkRows(allRows));
+        } catch (e) {
+          reject(new Error("อ่านไฟล์ Excel ไม่สำเร็จ: " + e.message));
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
   }
 
   var bulkParsedRows = [];
@@ -692,8 +739,29 @@
     renderBulkPreview(parseBulkText(bulkTextarea.value));
   });
 
+  bulkFileInput.addEventListener("change", function () {
+    var file = bulkFileInput.files && bulkFileInput.files[0];
+    if (!file) return;
+    bulkSummaryEl.textContent = "กำลังอ่านไฟล์ " + file.name + " ...";
+    parseSheetFile(file)
+      .then(function (result) {
+        bulkTextarea.value = "";
+        renderBulkPreview(result);
+      })
+      .catch(function (error) {
+        bulkPreviewWrap.classList.add("hidden");
+        bulkImportBtn.classList.add("hidden");
+        bulkClearBtn.classList.remove("hidden");
+        bulkSummaryEl.textContent = "⚠️ " + error.message;
+      })
+      .finally(function () {
+        bulkFileInput.value = "";
+      });
+  });
+
   bulkClearBtn.addEventListener("click", function () {
     bulkTextarea.value = "";
+    bulkFileInput.value = "";
     bulkParsedRows = [];
     bulkPreviewWrap.classList.add("hidden");
     bulkImportBtn.classList.add("hidden");

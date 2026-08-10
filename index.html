@@ -114,11 +114,18 @@
       <h2>นำเข้าข้อมูลจากตาราง</h2>
     </div>
     <p class="hint">
-      คัดลอกข้อมูลจาก Excel / Google Sheets มาวางในช่องด้านล่างได้เลย (คั่นด้วย Tab หรือ comma)<br>
+      อัปโหลดไฟล์ตาราง (.xlsx, .xls, .csv) หรือคัดลอกข้อมูลจาก Excel / Google Sheets มาวางก็ได้<br>
       <strong>ถ้าแถวแรกเป็นหัวตาราง</strong> (เช่น "วันที่จับ", "ฟาร์ม", "ไซส์" ฯลฯ) ระบบจะจับคู่คอลัมน์ตามชื่อหัวข้อให้อัตโนมัติ ไม่ต้องเรียงลำดับตามที่กำหนด<br>
       <strong>ถ้าไม่มีหัวตาราง</strong> ระบบจะอ่านตามลำดับนี้: วันที่จับ | วันที่ปล่อยกุ้ง | ฟาร์ม | บ่อ | ไซส์(ตัว/กก.) | ราคา(บาท/กก.) | จำนวนปล่อย(ตัว) | จำนวนที่จับ(กก.) | อาหารรวม(กก.)<br>
       รองรับวันที่แบบ YYYY-MM-DD หรือ DD/MM/YYYY (ปี พ.ศ. หรือ ค.ศ. ก็ได้)
     </p>
+
+    <div class="field">
+      <label for="bulk-file-input">เลือกไฟล์ตาราง</label>
+      <input type="file" id="bulk-file-input" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+    </div>
+
+    <p class="hint">หรือวางข้อมูลตารางในกล่องด้านล่างแทน:</p>
     <textarea id="bulk-import-textarea" rows="6" placeholder="วางข้อมูลตารางที่นี่..."></textarea>
     <div class="form-actions">
       <button type="button" id="bulk-preview-btn" class="btn btn-ghost">ตรวจสอบข้อมูล</button>
@@ -201,6 +208,7 @@
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="firebase-config.js"></script>
 <script src="app.js"></script>
 </body>
