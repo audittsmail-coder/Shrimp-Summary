@@ -2,11 +2,18 @@
   "use strict";
 
   if ("serviceWorker" in navigator) {
+    var lastSwUpdateCheck = 0;
+    function maybeUpdateSw(registration) {
+      var now = Date.now();
+      if (now - lastSwUpdateCheck < 5 * 60 * 1000) return;
+      lastSwUpdateCheck = now;
+      registration.update();
+    }
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("sw.js").then(function (registration) {
-        registration.update();
+        maybeUpdateSw(registration);
         document.addEventListener("visibilitychange", function () {
-          if (document.visibilityState === "visible") registration.update();
+          if (document.visibilityState === "visible") maybeUpdateSw(registration);
         });
       });
     });
@@ -59,13 +66,25 @@
   var dataLoaded = false;
   var recordsRef = firebase.database().ref("harvestRecords");
 
+  var offlineWarningTimer = null;
+
   firebase.database().ref(".info/connected").on("value", function (snap) {
     if (snap.val() === true) {
+      if (offlineWarningTimer) {
+        clearTimeout(offlineWarningTimer);
+        offlineWarningTimer = null;
+      }
       syncStatusEl.textContent = "✅ เชื่อมต่อฐานข้อมูลแล้ว";
       syncStatusEl.className = "sync-status ok";
     } else {
-      syncStatusEl.textContent = "⚠️ ขาดการเชื่อมต่อ (ข้อมูลจะซิงค์เมื่อกลับมาออนไลน์)";
-      syncStatusEl.className = "sync-status offline";
+      // Brief reconnects are normal (e.g. WiFi handoff, tab backgrounded on
+      // mobile Safari) — wait a few seconds before alarming the user so a
+      // split-second blip doesn't read as the connection "flapping".
+      if (offlineWarningTimer) clearTimeout(offlineWarningTimer);
+      offlineWarningTimer = setTimeout(function () {
+        syncStatusEl.textContent = "⚠️ ขาดการเชื่อมต่อ (ข้อมูลจะซิงค์เมื่อกลับมาออนไลน์)";
+        syncStatusEl.className = "sync-status offline";
+      }, 3000);
     }
   });
 
