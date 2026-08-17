@@ -90,11 +90,13 @@
 
   recordsRef.on("value", function (snapshot) {
     var data = snapshot.val() || {};
-    records = Object.keys(data).map(function (key) {
-      var r = data[key];
-      r.id = key;
-      return r;
-    });
+    records = Object.keys(data)
+      .filter(function (key) { return data[key] !== null; })
+      .map(function (key) {
+        var r = data[key];
+        r.id = key;
+        return r;
+      });
     dataLoaded = true;
     renderAll();
   }, function (error) {
@@ -250,6 +252,16 @@
     });
   }
 
+  function deleteRecords(ids, confirmMessage) {
+    if (ids.length === 0) return;
+    if (!confirm(confirmMessage)) return;
+    var updates = {};
+    ids.forEach(function (id) { updates[id] = null; });
+    recordsRef.update(updates).catch(function (error) {
+      alert("ลบข้อมูลไม่สำเร็จ: " + error.message);
+    });
+  }
+
   function renderDatalists() {
     var farms = Array.from(new Set(records.map(function (r) { return r.farm; }).filter(Boolean)));
     var ponds = Array.from(new Set(records.map(function (r) { return r.pond; }).filter(Boolean)));
@@ -387,9 +399,11 @@
         var fcrDelta = prev ? renderDelta(c.fcr, prev.fcr, false, 2, "") : "";
         var survivalDelta = prev ? renderDelta(c.survivalRate, prev.survivalRate, true, 1, "%") : "";
         var cycleLabel = c.stockingDate ? "ปล่อย " + escapeHtml(c.stockingDate) : "ไม่ระบุวันปล่อย";
+        var cycleIds = c.entries.map(function (r) { return r.id; }).join(",");
 
         return (
           "<div class=\"pond-card" + (isLatest && g.cycles.length > 1 ? " is-latest" : "") + "\">" +
+            "<button class=\"btn-icon danger cycle-delete-btn\" data-action=\"delete-cycle\" data-ids=\"" + cycleIds + "\" title=\"ลบข้อมูลรอบนี้\">🗑️</button>" +
             "<span class=\"cycle-label\">" + cycleLabel + (isLatest && g.cycles.length > 1 ? " · ล่าสุด" : "") + "</span>" +
             "<div class=\"row\"><span>จำนวนครั้งที่จับ</span><span>" + c.entries.length + " ครั้ง</span></div>" +
             "<div class=\"row\"><span>วันเลี้ยง</span><span>" + fmt(c.maxDays, 0) + " วัน</span></div>" +
@@ -405,17 +419,35 @@
         );
       }).join("");
 
+      var pondIds = g.cycles.reduce(function (acc, c) {
+        return acc.concat(c.entries.map(function (r) { return r.id; }));
+      }, []).join(",");
+
       return (
         "<div class=\"pond-group\">" +
           "<div class=\"pond-group-header\">" +
             "<h3>" + escapeHtml(g.farm) + " · " + escapeHtml(g.pond) + "</h3>" +
             (g.cycles.length > 1 ? "<span class=\"cycle-count-badge\">" + g.cycles.length + " รอบเลี้ยง</span>" : "") +
+            "<button class=\"btn-icon danger pond-delete-btn\" data-action=\"delete-pond\" data-ids=\"" + pondIds + "\" data-label=\"" + escapeHtml(g.farm) + " · " + escapeHtml(g.pond) + "\" title=\"ลบบ่อนี้ทั้งหมด\">🗑️ ลบบ่อนี้</button>" +
           "</div>" +
           "<div class=\"cycle-row\">" + cardsHtml + "</div>" +
         "</div>"
       );
     }).join("");
   }
+
+  pondSummaryEl.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    var ids = btn.getAttribute("data-ids").split(",").filter(Boolean);
+    var action = btn.getAttribute("data-action");
+    if (action === "delete-cycle") {
+      deleteRecords(ids, "ต้องการลบข้อมูลรอบเลี้ยงนี้หรือไม่? (" + ids.length + " รายการ)");
+    } else if (action === "delete-pond") {
+      var label = btn.getAttribute("data-label");
+      deleteRecords(ids, "ต้องการลบข้อมูลทั้งหมดของบ่อ \"" + label + "\" หรือไม่? (" + ids.length + " รายการ ทุกรอบเลี้ยง) การลบนี้ไม่สามารถย้อนกลับได้");
+    }
+  });
 
   function renderOverallSummary() {
     var totalRecords = records.length;

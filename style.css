@@ -325,6 +325,7 @@ tbody tr:hover {
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 
 .pond-group-header h3 {
@@ -340,6 +341,24 @@ tbody tr:hover {
   border-radius: 999px;
   background: var(--border);
   color: var(--muted);
+}
+
+.pond-delete-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--danger);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pond-delete-btn:hover {
+  background: var(--danger-light);
+  border-color: var(--danger);
 }
 
 .cycle-row {
@@ -364,6 +383,14 @@ tbody tr:hover {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   margin-bottom: 4px;
+  padding-right: 26px;
+}
+
+.cycle-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 0.85rem;
 }
 
 .pond-card.is-latest {
