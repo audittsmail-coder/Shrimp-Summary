@@ -25,95 +25,114 @@
       <h2 id="form-title">เพิ่มรายการจับกุ้ง</h2>
       <button id="cancel-edit-btn" class="btn btn-ghost hidden" type="button">ยกเลิกการแก้ไข</button>
     </div>
-    <form id="harvest-form" class="grid-form" autocomplete="off">
+    <form id="harvest-form" autocomplete="off">
       <input type="hidden" id="record-id">
 
-      <div class="field">
-        <label for="harvestDate">วันที่จับ</label>
-        <input type="date" id="harvestDate" required>
+      <div class="form-section">
+        <h3 class="form-section-title">วันที่และสถานที่</h3>
+        <div class="grid-form">
+          <div class="field">
+            <label for="harvestDate">วันที่จับ</label>
+            <input type="date" id="harvestDate" required>
+          </div>
+
+          <div class="field">
+            <label for="stockingDate">วันที่ปล่อยกุ้ง
+              <span class="info-icon" tabindex="0" title="ใช้แยกรอบเลี้ยงของบ่อเดียวกัน ถ้าลงกุ้งรอบใหม่ในบ่อเดิม ให้ใส่วันที่ปล่อยรอบใหม่">ⓘ</span>
+            </label>
+            <input type="date" id="stockingDate" required>
+          </div>
+
+          <div class="field">
+            <label for="farm">ฟาร์มที่</label>
+            <input type="text" id="farm" list="farm-list" placeholder="เช่น ฟาร์ม A" required>
+            <datalist id="farm-list"></datalist>
+          </div>
+
+          <div class="field">
+            <label for="pond">บ่อที่</label>
+            <input type="text" id="pond" list="pond-list" placeholder="เช่น บ่อ 1" required>
+            <datalist id="pond-list"></datalist>
+          </div>
+        </div>
       </div>
 
-      <div class="field">
-        <label for="stockingDate">วันที่ปล่อยกุ้ง (เริ่มรอบเลี้ยง)</label>
-        <input type="date" id="stockingDate" required>
-        <span class="hint">ใช้แยกรอบเลี้ยงของบ่อเดียวกัน ถ้าลงกุ้งรอบใหม่ในบ่อเดิม ให้ใส่วันที่ปล่อยรอบใหม่</span>
+      <div class="form-section">
+        <h3 class="form-section-title">ข้อมูลลูกกุ้งที่ปล่อย</h3>
+        <div class="grid-form">
+          <div class="field">
+            <label for="stockingCount">จำนวนปล่อยกุ้ง (ตัว)
+              <span class="info-icon" tabindex="0" title="กรอกจำนวนลูกกุ้งที่ปล่อยตอนเริ่มรอบเลี้ยงของบ่อนี้">ⓘ</span>
+            </label>
+            <input type="number" id="stockingCount" min="0" step="1" placeholder="เช่น 500000" required>
+          </div>
+
+          <div class="field">
+            <label for="species">ชนิดกุ้ง</label>
+            <input type="text" id="species" list="species-list" placeholder="เช่น กุ้งขาว (Vannamei)">
+            <datalist id="species-list"></datalist>
+          </div>
+
+          <div class="field">
+            <label for="larvaeSource">ลูกกุ้งจากไหน</label>
+            <input type="text" id="larvaeSource" list="larvae-source-list" placeholder="เช่น ฟาร์มพ่อแม่พันธุ์ ABC">
+            <datalist id="larvae-source-list"></datalist>
+          </div>
+        </div>
       </div>
 
-      <div class="field">
-        <label for="farm">ฟาร์มที่</label>
-        <input type="text" id="farm" list="farm-list" placeholder="เช่น ฟาร์ม A" required>
-        <datalist id="farm-list"></datalist>
+      <div class="form-section">
+        <h3 class="form-section-title">ผลการจับ</h3>
+        <div class="grid-form">
+          <div class="field">
+            <label for="size">ขนาดไซส์ (ตัว/กก.)</label>
+            <input type="number" id="size" min="0" step="0.1" placeholder="เช่น 50" required>
+            <span id="size-autofill-hint" class="hint hidden"></span>
+          </div>
+
+          <div class="field">
+            <label for="price">ราคา (บาท/กก.)</label>
+            <input type="number" id="price" min="0" step="0.01" placeholder="เช่น 150" required>
+          </div>
+
+          <div class="field">
+            <label for="catchAmount">จำนวนที่จับ (กก.)</label>
+            <input type="number" id="catchAmount" min="0" step="0.01" placeholder="เช่น 500" required>
+          </div>
+
+          <div class="field">
+            <label for="totalFeed">อาหารรวมทั้งหมด (กก.)
+              <span class="info-icon" tabindex="0" title="กรณีจับหลายรอบต่อบ่อ ให้กรอกยอดอาหารสะสมล่าสุดของบ่อนั้น">ⓘ</span>
+            </label>
+            <input type="number" id="totalFeed" min="0" step="0.01" placeholder="เช่น 750" required>
+          </div>
+        </div>
       </div>
 
-      <div class="field">
-        <label for="pond">บ่อที่</label>
-        <input type="text" id="pond" list="pond-list" placeholder="เช่น บ่อ 1" required>
-        <datalist id="pond-list"></datalist>
-      </div>
-
-      <div class="field">
-        <label for="size">ขนาดไซส์ (ตัว/กก.)</label>
-        <input type="number" id="size" min="0" step="0.1" placeholder="เช่น 50" required>
-        <span id="size-autofill-hint" class="hint hidden"></span>
-      </div>
-
-      <div class="field">
-        <label for="price">ราคา (บาท/กก.)</label>
-        <input type="number" id="price" min="0" step="0.01" placeholder="เช่น 150" required>
-      </div>
-
-      <div class="field">
-        <label for="stockingCount">จำนวนปล่อยกุ้ง (ตัว)</label>
-        <input type="number" id="stockingCount" min="0" step="1" placeholder="เช่น 500000" required>
-        <span class="hint">กรอกจำนวนลูกกุ้งที่ปล่อยตอนเริ่มรอบเลี้ยงของบ่อนี้</span>
-      </div>
-
-      <div class="field">
-        <label for="species">ชนิดกุ้ง</label>
-        <input type="text" id="species" list="species-list" placeholder="เช่น กุ้งขาว (Vannamei)">
-        <datalist id="species-list"></datalist>
-      </div>
-
-      <div class="field">
-        <label for="larvaeSource">ลูกกุ้งจากไหน</label>
-        <input type="text" id="larvaeSource" list="larvae-source-list" placeholder="เช่น ฟาร์มพ่อแม่พันธุ์ ABC">
-        <datalist id="larvae-source-list"></datalist>
-      </div>
-
-      <div class="field">
-        <label for="catchAmount">จำนวนที่จับ (กก.)</label>
-        <input type="number" id="catchAmount" min="0" step="0.01" placeholder="เช่น 500" required>
-      </div>
-
-      <div class="field">
-        <label for="totalFeed">อาหารรวมทั้งหมด (กก.)</label>
-        <input type="number" id="totalFeed" min="0" step="0.01" placeholder="เช่น 750" required>
-        <span class="hint">กรณีจับหลายรอบต่อบ่อ ให้กรอกยอดอาหารสะสมล่าสุดของบ่อนั้น</span>
-      </div>
-
-      <div class="field field-readonly">
-        <label>จำนวนวันที่เลี้ยง (คำนวณอัตโนมัติ)</label>
-        <output id="culture-days-preview">-</output>
-      </div>
-
-      <div class="field field-readonly">
-        <label>FCR (ประมาณการรายการนี้)</label>
-        <output id="fcr-preview">-</output>
-      </div>
-
-      <div class="field field-readonly">
-        <label>มูลค่ารายการนี้ (บาท)</label>
-        <output id="value-preview">-</output>
-      </div>
-
-      <div class="field field-readonly">
-        <label>จำนวนที่จับ (ตัว)</label>
-        <output id="count-preview">-</output>
-      </div>
-
-      <div class="field field-readonly">
-        <label>อัตรารอด (%)</label>
-        <output id="survival-preview">-</output>
+      <div class="form-section computed-section">
+        <h3 class="form-section-title">ผลคำนวณอัตโนมัติ</h3>
+        <div class="computed-grid">
+          <div class="stat">
+            <div class="stat-value" id="culture-days-preview">-</div>
+            <div class="stat-label">จำนวนวันที่เลี้ยง</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="count-preview">-</div>
+            <div class="stat-label">จำนวนที่จับ (ตัว)</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="survival-preview">-</div>
+            <div class="stat-label">อัตรารอด</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="fcr-preview">-</div>
+            <div class="stat-label">FCR</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="value-preview">-</div>
+            <div class="stat-label">มูลค่ารายการนี้ (บาท)</div>
+          </div>
+        </div>
       </div>
 
       <div class="form-actions">
