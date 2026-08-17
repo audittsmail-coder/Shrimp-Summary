@@ -34,6 +34,8 @@
   var sizeInput = document.getElementById("size");
   var priceInput = document.getElementById("price");
   var stockingCountInput = document.getElementById("stockingCount");
+  var speciesInput = document.getElementById("species");
+  var larvaeSourceInput = document.getElementById("larvaeSource");
   var catchAmountInput = document.getElementById("catchAmount");
   var totalFeedInput = document.getElementById("totalFeed");
   var cultureDaysPreview = document.getElementById("culture-days-preview");
@@ -52,6 +54,8 @@
   var overallSummaryEl = document.getElementById("overall-summary");
   var farmListEl = document.getElementById("farm-list");
   var pondListEl = document.getElementById("pond-list");
+  var speciesListEl = document.getElementById("species-list");
+  var larvaeSourceListEl = document.getElementById("larvae-source-list");
   var sizeAutoFillHint = document.getElementById("size-autofill-hint");
   var syncStatusEl = document.getElementById("sync-status");
   var bulkTextarea = document.getElementById("bulk-import-textarea");
@@ -282,6 +286,8 @@
       price: toNumber(priceInput.value),
       cultureDays: cultureDays,
       stockingCount: toNumber(stockingCountInput.value),
+      species: speciesInput.value.trim(),
+      larvaeSource: larvaeSourceInput.value.trim(),
       catchAmount: toNumber(catchAmountInput.value),
       totalFeed: toNumber(totalFeedInput.value)
     };
@@ -310,6 +316,8 @@
     sizeInput.value = r.size;
     priceInput.value = r.price;
     stockingCountInput.value = r.stockingCount;
+    speciesInput.value = r.species || "";
+    larvaeSourceInput.value = r.larvaeSource || "";
     catchAmountInput.value = r.catchAmount;
     totalFeedInput.value = r.totalFeed;
     formTitle.textContent = "แก้ไขรายการ";
@@ -341,6 +349,13 @@
     var firestoreFarmNames = firestoreFarms.map(function (f) { return f.name; });
     var farms = Array.from(new Set(localFarms.concat(firestoreFarmNames)));
     farmListEl.innerHTML = farms.map(function (f) { return "<option value=\"" + escapeHtml(f) + "\">"; }).join("");
+
+    var species = Array.from(new Set(records.map(function (r) { return r.species; }).filter(Boolean)));
+    speciesListEl.innerHTML = species.map(function (s) { return "<option value=\"" + escapeHtml(s) + "\">"; }).join("");
+
+    var larvaeSources = Array.from(new Set(records.map(function (r) { return r.larvaeSource; }).filter(Boolean)));
+    larvaeSourceListEl.innerHTML = larvaeSources.map(function (s) { return "<option value=\"" + escapeHtml(s) + "\">"; }).join("");
+
     refreshPondOptions();
   }
 
@@ -401,6 +416,8 @@
         "<td>" + fmt(r.size, 1) + "</td>" +
         "<td>" + fmt(r.price, 2) + "</td>" +
         "<td>" + fmt(r.cultureDays, 0) + "</td>" +
+        "<td>" + escapeHtml(r.species || "-") + "</td>" +
+        "<td>" + escapeHtml(r.larvaeSource || "-") + "</td>" +
         "<td>" + fmt(r.stockingCount, 0) + "</td>" +
         "<td>" + fmt(r.catchAmount, 2) + "</td>" +
         "<td>" + fmt(harvestedCount, 0) + "</td>" +
@@ -508,6 +525,8 @@
             "<div class=\"row\"><span>วันเลี้ยง</span><span>" + fmt(c.maxDays, 0) + " วัน</span></div>" +
             "<div class=\"row\"><span>ไซส์ล่าสุด</span><span>" + fmt(c.lastEntry.size, 1) + " ตัว/กก.</span></div>" +
             "<div class=\"row\"><span>จำนวนปล่อย</span><span>" + fmt(c.stockingCount, 0) + " ตัว</span></div>" +
+            (c.lastEntry.species ? "<div class=\"row\"><span>ชนิดกุ้ง</span><span>" + escapeHtml(c.lastEntry.species) + "</span></div>" : "") +
+            (c.lastEntry.larvaeSource ? "<div class=\"row\"><span>ลูกกุ้งจากไหน</span><span>" + escapeHtml(c.lastEntry.larvaeSource) + "</span></div>" : "") +
             "<div class=\"row\"><span>จำนวนจับรวม</span><span>" + fmt(c.totalCatch, 2) + " กก. (" + fmt(c.totalHarvestedCount, 0) + " ตัว)</span></div>" +
             "<div class=\"row\"><span>อาหารรวม (สะสม)</span><span>" + fmt(c.totalFeed, 2) + " กก.</span></div>" +
             "<div class=\"row\"><span>ราคาเฉลี่ย</span><span>" + fmt(c.avgPrice, 2) + " บาท/กก.</span></div>" +
@@ -584,13 +603,13 @@
 
   function exportCsv() {
     if (records.length === 0) return;
-    var header = ["วันที่จับ", "วันที่ปล่อย", "ฟาร์ม", "บ่อ", "ไซส์", "ราคา", "วันเลี้ยง", "จำนวนปล่อย(ตัว)", "จำนวนจับ(กก.)", "จำนวนจับ(ตัว)", "อัตรารอด(%)", "อาหารรวม(กก.)", "FCR", "มูลค่า(บาท)"];
+    var header = ["วันที่จับ", "วันที่ปล่อย", "ฟาร์ม", "บ่อ", "ไซส์", "ราคา", "วันเลี้ยง", "ชนิดกุ้ง", "ลูกกุ้งจากไหน", "จำนวนปล่อย(ตัว)", "จำนวนจับ(กก.)", "จำนวนจับ(ตัว)", "อัตรารอด(%)", "อาหารรวม(กก.)", "FCR", "มูลค่า(บาท)"];
     var rows = records.map(function (r) {
       var fcr = calcFcr(r.totalFeed, r.catchAmount);
       var harvestedCount = calcHarvestedCount(r.catchAmount, r.size);
       var survivalRate = calcSurvivalRate(r.stockingCount, harvestedCount);
       return [
-        r.harvestDate, r.stockingDate, r.farm, r.pond, r.size, r.price, r.cultureDays, r.stockingCount,
+        r.harvestDate, r.stockingDate, r.farm, r.pond, r.size, r.price, r.cultureDays, r.species, r.larvaeSource, r.stockingCount,
         r.catchAmount, harvestedCount.toFixed(0), survivalRate === null ? "" : survivalRate.toFixed(1),
         r.totalFeed, fcr === null ? "" : fcr.toFixed(2), (r.catchAmount * r.price).toFixed(2)
       ];
@@ -680,6 +699,8 @@
     if (h.indexOf("ไซส์") !== -1 || h.indexOf("ไซซ์") !== -1 || h.indexOf("ขนาด") !== -1 || h.indexOf("size") !== -1) return "size";
     if (h.indexOf("ราคา") !== -1 || h.indexOf("price") !== -1) return "price";
     if (h.indexOf("อาหาร") !== -1 || h.indexOf("feed") !== -1) return "totalFeed";
+    if (h.indexOf("ลูกกุ้ง") !== -1 || h.indexOf("แหล่ง") !== -1 || h.indexOf("hatchery") !== -1 || h.indexOf("source") !== -1) return "larvaeSource";
+    if (h.indexOf("ชนิด") !== -1 || h.indexOf("สายพันธุ์") !== -1 || h.indexOf("species") !== -1) return "species";
     if (h.indexOf("ปล่อย") !== -1 || h.indexOf("stock") !== -1) return "stockingCount";
     if (h.indexOf("จับ") !== -1 || h.indexOf("catch") !== -1) return "catchAmount";
     return null;
@@ -741,6 +762,8 @@
       var size = parseNumberFlexible(cells[columnMap.size]);
       var price = parseNumberFlexible(cells[columnMap.price]);
       var stockingCount = parseNumberFlexible(cells[columnMap.stockingCount]);
+      var species = (cells[columnMap.species] || "").trim();
+      var larvaeSource = (cells[columnMap.larvaeSource] || "").trim();
       var catchAmount = parseNumberFlexible(cells[columnMap.catchAmount]);
       var totalFeed = parseNumberFlexible(cells[columnMap.totalFeed]);
 
@@ -768,6 +791,8 @@
         size: size,
         price: price,
         stockingCount: stockingCount,
+        species: species,
+        larvaeSource: larvaeSource,
         catchAmount: catchAmount,
         totalFeed: totalFeed,
         cultureDays: cultureDays,
@@ -935,6 +960,8 @@
         price: r.price,
         cultureDays: r.cultureDays,
         stockingCount: r.stockingCount,
+        species: r.species,
+        larvaeSource: r.larvaeSource,
         catchAmount: r.catchAmount,
         totalFeed: r.totalFeed
       };
