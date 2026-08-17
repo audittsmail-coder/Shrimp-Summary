@@ -52,6 +52,7 @@
   var overallSummaryEl = document.getElementById("overall-summary");
   var farmListEl = document.getElementById("farm-list");
   var pondListEl = document.getElementById("pond-list");
+  var sizeAutoFillHint = document.getElementById("size-autofill-hint");
   var syncStatusEl = document.getElementById("sync-status");
   var bulkTextarea = document.getElementById("bulk-import-textarea");
   var bulkFileInput = document.getElementById("bulk-file-input");
@@ -87,6 +88,77 @@
       }, 3000);
     }
   });
+
+  // Read-only lookup into the shrimp-farm-data Firestore database (used by
+  // the farm/pond management app) so farm & pond names and the latest known
+  // size can be pulled in instead of retyped. Independent of the Realtime
+  // Database above — this app only reads from Firestore, never writes.
+  // Declared before recordsRef.on(...) below since its "value" callback
+  // (via renderDatalists) reads firestoreFarms/firestorePonds.
+  var firestoreDb = (typeof firebase.firestore === "function") ? firebase.firestore() : null;
+  var firestoreFarms = [];
+  var firestorePonds = [];
+
+  function loadFirestoreCatalog() {
+    if (!firestoreDb) return;
+
+    firestoreDb.collection("farms").orderBy("order").get()
+      .then(function (snap) {
+        firestoreFarms = snap.docs.map(function (doc) {
+          var d = doc.data();
+          return { id: doc.id, name: d.name || doc.id };
+        });
+        renderDatalists();
+      })
+      .catch(function (error) {
+        console.warn("โหลดรายชื่อฟาร์มจาก Firestore ไม่สำเร็จ:", error.message);
+      });
+
+    firestoreDb.collection("ponds").get()
+      .then(function (snap) {
+        firestorePonds = snap.docs.map(function (doc) {
+          var d = doc.data();
+          return { id: doc.id, farmId: d.farmId, name: d.name || doc.id };
+        });
+        refreshPondOptions();
+      })
+      .catch(function (error) {
+        console.warn("โหลดรายชื่อบ่อจาก Firestore ไม่สำเร็จ:", error.message);
+      });
+  }
+
+  function fillLatestSizeForPond() {
+    sizeAutoFillHint.classList.add("hidden");
+    if (!firestoreDb || sizeInput.value) return;
+
+    var farmName = farmInput.value.trim();
+    var pondName = pondInput.value.trim();
+    if (!farmName || !pondName) return;
+
+    var matchedFarm = firestoreFarms.find(function (f) { return f.name === farmName; });
+    if (!matchedFarm) return;
+    var matchedPond = firestorePonds.find(function (p) { return p.farmId === matchedFarm.id && p.name === pondName; });
+    if (!matchedPond) return;
+
+    firestoreDb.collection("records").where("pondId", "==", matchedPond.id).get()
+      .then(function (snap) {
+        var latest = null;
+        snap.forEach(function (doc) {
+          var d = doc.data();
+          if (!d.sizeCount) return;
+          if (!latest || (d.updatedAt || 0) > (latest.updatedAt || 0)) latest = d;
+        });
+        if (latest && !sizeInput.value) {
+          sizeInput.value = latest.sizeCount;
+          updatePreview();
+          sizeAutoFillHint.textContent = "✓ ดึงไซส์ล่าสุด (" + (latest.weekDate || "") + ") จากระบบตรวจบ่ออัตโนมัติ — แก้ไขได้ถ้าไม่ตรง";
+          sizeAutoFillHint.classList.remove("hidden");
+        }
+      })
+      .catch(function (error) {
+        console.warn("ดึงไซส์ล่าสุดไม่สำเร็จ:", error.message);
+      });
+  }
 
   recordsRef.on("value", function (snapshot) {
     var data = snapshot.val() || {};
@@ -185,6 +257,8 @@
     formTitle.textContent = "เพิ่มรายการจับกุ้ง";
     submitBtn.textContent = "＋ บันทึกรายการ";
     cancelEditBtn.classList.add("hidden");
+    sizeAutoFillHint.classList.add("hidden");
+    refreshPondOptions();
     updatePreview();
   }
 
@@ -263,11 +337,36 @@
   }
 
   function renderDatalists() {
-    var farms = Array.from(new Set(records.map(function (r) { return r.farm; }).filter(Boolean)));
-    var ponds = Array.from(new Set(records.map(function (r) { return r.pond; }).filter(Boolean)));
+    var localFarms = records.map(function (r) { return r.farm; }).filter(Boolean);
+    var firestoreFarmNames = firestoreFarms.map(function (f) { return f.name; });
+    var farms = Array.from(new Set(localFarms.concat(firestoreFarmNames)));
     farmListEl.innerHTML = farms.map(function (f) { return "<option value=\"" + escapeHtml(f) + "\">"; }).join("");
+    refreshPondOptions();
+  }
+
+  function refreshPondOptions() {
+    var farmName = farmInput.value.trim();
+    var matchedFarm = firestoreFarms.find(function (f) { return f.name === farmName; });
+
+    var localPonds = records
+      .filter(function (r) { return !farmName || r.farm === farmName; })
+      .map(function (r) { return r.pond; })
+      .filter(Boolean);
+
+    var firestorePondNames = matchedFarm
+      ? firestorePonds.filter(function (p) { return p.farmId === matchedFarm.id; }).map(function (p) { return p.name; })
+      : [];
+
+    var ponds = Array.from(new Set(localPonds.concat(firestorePondNames)));
     pondListEl.innerHTML = ponds.map(function (p) { return "<option value=\"" + escapeHtml(p) + "\">"; }).join("");
   }
+
+  farmInput.addEventListener("input", function () {
+    refreshPondOptions();
+    sizeAutoFillHint.classList.add("hidden");
+  });
+  pondInput.addEventListener("change", fillLatestSizeForPond);
+  sizeInput.addEventListener("input", function () { sizeAutoFillHint.classList.add("hidden"); });
 
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, function (c) {
@@ -868,5 +967,6 @@
 
   updatePreview();
   renderAll();
+  loadFirestoreCatalog();
 })();
 
