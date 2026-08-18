@@ -30,7 +30,7 @@
   var farmInput = document.getElementById("farm");
   var pondInput = document.getElementById("pond");
   var dateInput = document.getElementById("harvestDate");
-  var stockingDateInput = document.getElementById("stockingDate");
+  var cultureDaysInput = document.getElementById("cultureDays");
   var sizeInput = document.getElementById("size");
   var priceInput = document.getElementById("price");
   var stockingCountInput = document.getElementById("stockingCount");
@@ -38,7 +38,6 @@
   var larvaeSourceInput = document.getElementById("larvaeSource");
   var catchAmountInput = document.getElementById("catchAmount");
   var totalFeedInput = document.getElementById("totalFeed");
-  var cultureDaysPreview = document.getElementById("culture-days-preview");
   var fcrPreview = document.getElementById("fcr-preview");
   var valuePreview = document.getElementById("value-preview");
   var countPreview = document.getElementById("count-preview");
@@ -199,13 +198,15 @@
     return (harvestedCount / stockingCount) * 100;
   }
 
-  function calcCultureDays(stockingDate, harvestDate) {
-    if (!stockingDate || !harvestDate) return null;
-    var start = new Date(stockingDate + "T00:00:00");
-    var end = new Date(harvestDate + "T00:00:00");
-    var diffDays = Math.round((end - start) / 86400000);
-    if (isNaN(diffDays) || diffDays < 0) return null;
-    return diffDays;
+  // The user enters culture days directly (not a stocking date), but we
+  // still derive an implicit stocking date (harvestDate - cultureDays) to
+  // key culture cycles by — see cycleKey() — so ponds that get restocked
+  // are still told apart without asking the user to type/remember a date.
+  function deriveStockingDate(harvestDate, cultureDays) {
+    if (!harvestDate || cultureDays === null || cultureDays === undefined || isNaN(cultureDays) || cultureDays < 0) return null;
+    var d = new Date(harvestDate + "T00:00:00");
+    d.setDate(d.getDate() - cultureDays);
+    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
   }
 
   function cycleKey(r) {
@@ -243,15 +244,13 @@
     var fcr = calcFcr(feed, catchAmount);
     var harvestedCount = calcHarvestedCount(catchAmount, size);
     var survivalRate = calcSurvivalRate(stockingCount, harvestedCount);
-    var cultureDays = calcCultureDays(stockingDateInput.value, dateInput.value);
-    cultureDaysPreview.textContent = cultureDays === null ? "-" : fmt(cultureDays, 0) + " วัน";
     fcrPreview.textContent = fcr === null ? "-" : fmt(fcr, 2);
     valuePreview.textContent = catchAmount && price ? fmt(catchAmount * price, 2) : "-";
     countPreview.textContent = harvestedCount ? fmt(harvestedCount, 0) + " ตัว" : "-";
     survivalPreview.textContent = survivalRate === null ? "-" : fmt(survivalRate, 1) + "%";
   }
 
-  [totalFeedInput, catchAmountInput, priceInput, sizeInput, stockingCountInput, dateInput, stockingDateInput].forEach(function (el) {
+  [totalFeedInput, catchAmountInput, priceInput, sizeInput, stockingCountInput].forEach(function (el) {
     el.addEventListener("input", updatePreview);
   });
 
@@ -272,14 +271,10 @@
     e.preventDefault();
 
     var id = recordIdInput.value || recordsRef.push().key;
-    var cultureDays = calcCultureDays(stockingDateInput.value, dateInput.value);
-    if (cultureDays === null) {
-      alert("วันที่ปล่อยกุ้งต้องมาก่อนวันที่จับ กรุณาตรวจสอบวันที่อีกครั้ง");
-      return;
-    }
+    var cultureDays = toNumber(cultureDaysInput.value);
     var record = {
       harvestDate: dateInput.value,
-      stockingDate: stockingDateInput.value,
+      stockingDate: deriveStockingDate(dateInput.value, cultureDays),
       farm: farmInput.value.trim(),
       pond: pondInput.value.trim(),
       size: toNumber(sizeInput.value),
@@ -310,7 +305,7 @@
     if (!r) return;
     recordIdInput.value = r.id;
     dateInput.value = r.harvestDate;
-    stockingDateInput.value = r.stockingDate || "";
+    cultureDaysInput.value = r.cultureDays;
     farmInput.value = r.farm;
     pondInput.value = r.pond;
     sizeInput.value = r.size;
@@ -677,7 +672,7 @@
 
   var BULK_FIELD_DEFS = [
     { key: "harvestDate", label: "วันที่จับ" },
-    { key: "stockingDate", label: "วันที่ปล่อยกุ้ง" },
+    { key: "cultureDays", label: "จำนวนวันที่เลี้ยง" },
     { key: "farm", label: "ฟาร์ม" },
     { key: "pond", label: "บ่อ" },
     { key: "size", label: "ไซส์" },
@@ -686,12 +681,12 @@
     { key: "catchAmount", label: "จำนวนที่จับ" },
     { key: "totalFeed", label: "อาหารรวม" }
   ];
-  var BULK_DEFAULT_MAP = { harvestDate: 0, stockingDate: 1, farm: 2, pond: 3, size: 4, price: 5, stockingCount: 6, catchAmount: 7, totalFeed: 8 };
+  var BULK_DEFAULT_MAP = { harvestDate: 0, cultureDays: 1, farm: 2, pond: 3, size: 4, price: 5, stockingCount: 6, catchAmount: 7, totalFeed: 8 };
 
   function detectFieldFromHeader(header) {
     var h = (header || "").toLowerCase().replace(/\s+/g, "");
     if (h.indexOf("วัน") !== -1) {
-      if (h.indexOf("ปล่อย") !== -1) return "stockingDate";
+      if (h.indexOf("เลี้ยง") !== -1) return "cultureDays";
       if (h.indexOf("จับ") !== -1 || h.indexOf("เก็บ") !== -1 || h.indexOf("harvest") !== -1) return "harvestDate";
     }
     if (h.indexOf("ฟาร์ม") !== -1 || h.indexOf("farm") !== -1) return "farm";
@@ -756,7 +751,7 @@
       }
 
       var harvestDate = parseDateFlexible(cells[columnMap.harvestDate]);
-      var stockingDate = parseDateFlexible(cells[columnMap.stockingDate]);
+      var cultureDays = parseNumberFlexible(cells[columnMap.cultureDays]);
       var farm = (cells[columnMap.farm] || "").trim();
       var pond = (cells[columnMap.pond] || "").trim();
       var size = parseNumberFlexible(cells[columnMap.size]);
@@ -768,7 +763,7 @@
       var totalFeed = parseNumberFlexible(cells[columnMap.totalFeed]);
 
       if (!harvestDate) errors.push("วันที่จับไม่ถูกต้อง");
-      if (!stockingDate) errors.push("วันที่ปล่อยไม่ถูกต้อง");
+      if (isNaN(cultureDays) || cultureDays < 0) errors.push("จำนวนวันที่เลี้ยงไม่ถูกต้อง");
       if (!farm) errors.push("ไม่มีชื่อฟาร์ม");
       if (!pond) errors.push("ไม่มีชื่อบ่อ");
       if (isNaN(size) || size <= 0) errors.push("ไซส์ไม่ถูกต้อง");
@@ -777,10 +772,7 @@
       if (isNaN(catchAmount) || catchAmount <= 0) errors.push("จำนวนที่จับไม่ถูกต้อง");
       if (isNaN(totalFeed) || totalFeed < 0) errors.push("อาหารรวมไม่ถูกต้อง");
 
-      var cultureDays = errors.length === 0 ? calcCultureDays(stockingDate, harvestDate) : null;
-      if (errors.length === 0 && cultureDays === null) {
-        errors.push("วันที่ปล่อยต้องมาก่อนวันที่จับ");
-      }
+      var stockingDate = errors.length === 0 ? deriveStockingDate(harvestDate, cultureDays) : null;
 
       return {
         rowNumber: index + 1,

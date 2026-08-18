@@ -37,10 +37,10 @@
           </div>
 
           <div class="field">
-            <label for="stockingDate">วันที่ปล่อยกุ้ง
-              <span class="info-icon" tabindex="0" title="ใช้แยกรอบเลี้ยงของบ่อเดียวกัน ถ้าลงกุ้งรอบใหม่ในบ่อเดิม ให้ใส่วันที่ปล่อยรอบใหม่">ⓘ</span>
+            <label for="cultureDays">จำนวนวันที่เลี้ยง (วัน)
+              <span class="info-icon" tabindex="0" title="นับจากวันปล่อยลูกกุ้งถึงวันที่จับนี้ ใช้แยกรอบเลี้ยงของบ่อเดียวกันด้วย ถ้าลงกุ้งรอบใหม่ในบ่อเดิม ตัวเลขจะน้อยกว่ารอบก่อนหน้า">ⓘ</span>
             </label>
-            <input type="date" id="stockingDate" required>
+            <input type="number" id="cultureDays" min="0" step="1" placeholder="เช่น 90" required>
           </div>
 
           <div class="field">
@@ -113,10 +113,6 @@
         <h3 class="form-section-title">ผลคำนวณอัตโนมัติ</h3>
         <div class="computed-grid">
           <div class="stat">
-            <div class="stat-value" id="culture-days-preview">-</div>
-            <div class="stat-label">จำนวนวันที่เลี้ยง</div>
-          </div>
-          <div class="stat">
             <div class="stat-value" id="count-preview">-</div>
             <div class="stat-label">จำนวนที่จับ (ตัว)</div>
           </div>
@@ -148,7 +144,7 @@
     <p class="hint">
       อัปโหลดไฟล์ตาราง (.xlsx, .xls, .csv) หรือคัดลอกข้อมูลจาก Excel / Google Sheets มาวางก็ได้<br>
       <strong>ถ้าแถวแรกเป็นหัวตาราง</strong> (เช่น "วันที่จับ", "ฟาร์ม", "ไซส์" ฯลฯ) ระบบจะจับคู่คอลัมน์ตามชื่อหัวข้อให้อัตโนมัติ ไม่ต้องเรียงลำดับตามที่กำหนด<br>
-      <strong>ถ้าไม่มีหัวตาราง</strong> ระบบจะอ่านตามลำดับนี้: วันที่จับ | วันที่ปล่อยกุ้ง | ฟาร์ม | บ่อ | ไซส์(ตัว/กก.) | ราคา(บาท/กก.) | จำนวนปล่อย(ตัว) | จำนวนที่จับ(กก.) | อาหารรวม(กก.)<br>
+      <strong>ถ้าไม่มีหัวตาราง</strong> ระบบจะอ่านตามลำดับนี้: วันที่จับ | จำนวนวันที่เลี้ยง | ฟาร์ม | บ่อ | ไซส์(ตัว/กก.) | ราคา(บาท/กก.) | จำนวนปล่อย(ตัว) | จำนวนที่จับ(กก.) | อาหารรวม(กก.)<br>
       รองรับวันที่แบบ YYYY-MM-DD หรือ DD/MM/YYYY (ปี พ.ศ. หรือ ค.ศ. ก็ได้)
     </p>
 
