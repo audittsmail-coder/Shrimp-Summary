@@ -406,8 +406,8 @@
       tr.innerHTML =
         "<td>" + escapeHtml(r.harvestDate || "-") + "</td>" +
         "<td>" + escapeHtml(r.stockingDate || "-") + "</td>" +
-        "<td>" + escapeHtml(r.farm) + "</td>" +
-        "<td>" + escapeHtml(r.pond) + "</td>" +
+        "<td>" + escapeHtml(r.farm || "-") + "</td>" +
+        "<td>" + escapeHtml(r.pond || "-") + "</td>" +
         "<td>" + fmt(r.size, 1) + "</td>" +
         "<td>" + fmt(r.price, 2) + "</td>" +
         "<td>" + fmt(r.cultureDays, 0) + "</td>" +
@@ -535,13 +535,14 @@
       var pondIds = g.cycles.reduce(function (acc, c) {
         return acc.concat(c.entries.map(function (r) { return r.id; }));
       }, []).join(",");
+      var pondLabel = (g.farm || "ไม่ระบุฟาร์ม") + " · " + (g.pond || "ไม่ระบุบ่อ");
 
       return (
         "<div class=\"pond-group\">" +
           "<div class=\"pond-group-header\">" +
-            "<h3>" + escapeHtml(g.farm) + " · " + escapeHtml(g.pond) + "</h3>" +
+            "<h3>" + escapeHtml(pondLabel) + "</h3>" +
             (g.cycles.length > 1 ? "<span class=\"cycle-count-badge\">" + g.cycles.length + " รอบเลี้ยง</span>" : "") +
-            "<button class=\"btn-icon danger pond-delete-btn\" data-action=\"delete-pond\" data-ids=\"" + pondIds + "\" data-label=\"" + escapeHtml(g.farm) + " · " + escapeHtml(g.pond) + "\" title=\"ลบบ่อนี้ทั้งหมด\">🗑️ ลบบ่อนี้</button>" +
+            "<button class=\"btn-icon danger pond-delete-btn\" data-action=\"delete-pond\" data-ids=\"" + pondIds + "\" data-label=\"" + escapeHtml(pondLabel) + "\" title=\"ลบบ่อนี้ทั้งหมด\">🗑️ ลบบ่อนี้</button>" +
           "</div>" +
           "<div class=\"cycle-row\">" + cardsHtml + "</div>" +
         "</div>"

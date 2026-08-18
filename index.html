@@ -33,25 +33,25 @@
         <div class="grid-form">
           <div class="field">
             <label for="harvestDate">วันที่จับ</label>
-            <input type="date" id="harvestDate" required>
+            <input type="date" id="harvestDate">
           </div>
 
           <div class="field">
             <label for="cultureDays">จำนวนวันที่เลี้ยง (วัน)
               <span class="info-icon" tabindex="0" title="นับจากวันปล่อยลูกกุ้งถึงวันที่จับนี้ ใช้แยกรอบเลี้ยงของบ่อเดียวกันด้วย ถ้าลงกุ้งรอบใหม่ในบ่อเดิม ตัวเลขจะน้อยกว่ารอบก่อนหน้า">ⓘ</span>
             </label>
-            <input type="number" id="cultureDays" min="0" step="1" placeholder="เช่น 90" required>
+            <input type="number" id="cultureDays" min="0" step="1" placeholder="เช่น 90">
           </div>
 
           <div class="field">
             <label for="farm">ฟาร์มที่</label>
-            <input type="text" id="farm" list="farm-list" placeholder="เช่น ฟาร์ม A" required>
+            <input type="text" id="farm" list="farm-list" placeholder="เช่น ฟาร์ม A">
             <datalist id="farm-list"></datalist>
           </div>
 
           <div class="field">
             <label for="pond">บ่อที่</label>
-            <input type="text" id="pond" list="pond-list" placeholder="เช่น บ่อ 1" required>
+            <input type="text" id="pond" list="pond-list" placeholder="เช่น บ่อ 1">
             <datalist id="pond-list"></datalist>
           </div>
         </div>
@@ -64,7 +64,7 @@
             <label for="stockingCount">จำนวนปล่อยกุ้ง (ตัว)
               <span class="info-icon" tabindex="0" title="กรอกจำนวนลูกกุ้งที่ปล่อยตอนเริ่มรอบเลี้ยงของบ่อนี้">ⓘ</span>
             </label>
-            <input type="number" id="stockingCount" min="0" step="1" placeholder="เช่น 500000" required>
+            <input type="number" id="stockingCount" min="0" step="1" placeholder="เช่น 500000">
           </div>
 
           <div class="field">
@@ -86,25 +86,25 @@
         <div class="grid-form">
           <div class="field">
             <label for="size">ขนาดไซส์ (ตัว/กก.)</label>
-            <input type="number" id="size" min="0" step="0.1" placeholder="เช่น 50" required>
+            <input type="number" id="size" min="0" step="0.1" placeholder="เช่น 50">
             <span id="size-autofill-hint" class="hint hidden"></span>
           </div>
 
           <div class="field">
             <label for="price">ราคา (บาท/กก.)</label>
-            <input type="number" id="price" min="0" step="0.01" placeholder="เช่น 150" required>
+            <input type="number" id="price" min="0" step="0.01" placeholder="เช่น 150">
           </div>
 
           <div class="field">
             <label for="catchAmount">จำนวนที่จับ (กก.)</label>
-            <input type="number" id="catchAmount" min="0" step="0.01" placeholder="เช่น 500" required>
+            <input type="number" id="catchAmount" min="0" step="0.01" placeholder="เช่น 500">
           </div>
 
           <div class="field">
             <label for="totalFeed">อาหารรวมทั้งหมด (กก.)
               <span class="info-icon" tabindex="0" title="กรณีจับหลายรอบต่อบ่อ ให้กรอกยอดอาหารสะสมล่าสุดของบ่อนั้น">ⓘ</span>
             </label>
-            <input type="number" id="totalFeed" min="0" step="0.01" placeholder="เช่น 750" required>
+            <input type="number" id="totalFeed" min="0" step="0.01" placeholder="เช่น 750">
           </div>
         </div>
       </div>
