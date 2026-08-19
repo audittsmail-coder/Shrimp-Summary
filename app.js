@@ -679,14 +679,17 @@
       if (!busiestMonthKey || monthly[k].catch > monthly[busiestMonthKey].catch) busiestMonthKey = k;
     });
 
+    var totalMonthlyCatch = monthKeys.reduce(function (s, k) { return s + monthly[k].catch; }, 0);
+
     renderBarChart(monthlyChartEl, monthKeys.map(function (k) {
       var m = monthly[k];
+      var pct = totalMonthlyCatch ? (m.catch / totalMonthlyCatch) * 100 : 0;
       return {
         label: formatMonthLabel(k),
-        value: m.catch,
-        tooltip: formatMonthLabel(k) + " — จับรวม " + fmt(m.catch, 2) + " กก., มูลค่า " + fmt(m.value, 2) + " บาท (" + m.count + " รายการ)"
+        value: pct,
+        tooltip: formatMonthLabel(k) + " — " + fmt(pct, 1) + "% ของยอดจับรวม (จับ " + fmt(m.catch, 2) + " กก., มูลค่า " + fmt(m.value, 2) + " บาท, " + m.count + " รายการ)"
       };
-    }), function (v) { return fmt(v, 0); });
+    }), function (v) { return fmt(v, 1) + "%"; });
 
     var survivalValues = records
       .map(function (r) { return calcSurvivalRate(r.stockingCount, calcHarvestedCount(r.catchAmount, r.size)); })
@@ -699,9 +702,16 @@
       return (!best || b.count > best.count) ? b : best;
     }, null);
 
+    var totalSurvivalRecords = survivalValues.length;
     renderBarChart(survivalDistChartEl, bucketCounts.map(function (b) {
-      return { label: b.label, value: b.count, color: b.color, tooltip: b.label + ": " + b.count + " รายการ" };
-    }), function (v) { return fmt(v, 0) + " รายการ"; });
+      var pct = totalSurvivalRecords ? (b.count / totalSurvivalRecords) * 100 : 0;
+      return {
+        label: b.label,
+        value: pct,
+        color: b.color,
+        tooltip: b.label + " — " + fmt(pct, 1) + "% (" + b.count + " รายการ)"
+      };
+    }), function (v) { return fmt(v, 1) + "%"; });
 
     var avgCatch = avgOf(records, function (r) { return r.catchAmount; });
     var avgValue = avgOf(records, function (r) { return r.catchAmount * r.price; });
