@@ -51,6 +51,11 @@
   var exportCsvBtn = document.getElementById("export-csv-btn");
   var pondSummaryEl = document.getElementById("pond-summary");
   var overallSummaryEl = document.getElementById("overall-summary");
+  var statsQuickEl = document.getElementById("stats-quick");
+  var statsEmptyEl = document.getElementById("stats-empty");
+  var statsChartsEl = document.getElementById("stats-charts");
+  var monthlyChartEl = document.getElementById("monthly-chart");
+  var survivalDistChartEl = document.getElementById("survival-dist-chart");
   var farmListEl = document.getElementById("farm-list");
   var pondListEl = document.getElementById("pond-list");
   var speciesListEl = document.getElementById("species-list");
@@ -604,6 +609,117 @@
     }).join("");
   }
 
+  var THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+
+  function formatMonthLabel(yyyyMM) {
+    var parts = yyyyMM.split("-");
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    if (!y || !m || m < 1 || m > 12) return yyyyMM;
+    return THAI_MONTHS[m - 1] + " " + (y + 543);
+  }
+
+  function avgOf(list, getter) {
+    var valid = list.map(getter).filter(function (v) { return v !== null && v !== undefined && !isNaN(v) && v > 0; });
+    if (valid.length === 0) return null;
+    return valid.reduce(function (s, v) { return s + v; }, 0) / valid.length;
+  }
+
+  // Same good/ok/bad thresholds as survivalBadgeClass(), split finer for a
+  // distribution chart. Colors are the badges' solid text colors (not the
+  // translucent chip background) so they read clearly as bar fills.
+  var SURVIVAL_BUCKETS = [
+    { label: "<50%", test: function (v) { return v < 50; }, color: "#f87171" },
+    { label: "50-70%", test: function (v) { return v >= 50 && v < 70; }, color: "#facc15" },
+    { label: "70-90%", test: function (v) { return v >= 70 && v < 90; }, color: "#4ade80" },
+    { label: "90%+", test: function (v) { return v >= 90; }, color: "#4ade80" }
+  ];
+
+  function renderBarChart(container, items, valueFormatter) {
+    if (items.length === 0) {
+      container.innerHTML = "<p class=\"empty-state\">ไม่มีข้อมูล</p>";
+      return;
+    }
+    var maxValue = Math.max.apply(null, items.map(function (it) { return it.value; })) || 1;
+    container.innerHTML = items.map(function (it) {
+      var heightPct = it.value > 0 ? Math.max((it.value / maxValue) * 100, 3) : 0;
+      var barStyle = "height:" + heightPct + "%;" + (it.color ? "background:" + it.color + ";" : "");
+      return (
+        "<div class=\"bar-group\" title=\"" + escapeHtml(it.tooltip) + "\">" +
+          "<div class=\"bar-value\">" + valueFormatter(it.value) + "</div>" +
+          "<div class=\"bar\" style=\"" + barStyle + "\"></div>" +
+          "<div class=\"bar-label\">" + escapeHtml(it.label) + "</div>" +
+        "</div>"
+      );
+    }).join("");
+  }
+
+  function renderStats() {
+    if (records.length === 0) {
+      statsQuickEl.innerHTML = "";
+      statsChartsEl.classList.add("hidden");
+      statsEmptyEl.classList.remove("hidden");
+      return;
+    }
+    statsChartsEl.classList.remove("hidden");
+    statsEmptyEl.classList.add("hidden");
+
+    var monthly = {};
+    records.forEach(function (r) {
+      if (!r.harvestDate) return;
+      var key = r.harvestDate.slice(0, 7);
+      if (!monthly[key]) monthly[key] = { catch: 0, value: 0, count: 0 };
+      monthly[key].catch += r.catchAmount;
+      monthly[key].value += r.catchAmount * r.price;
+      monthly[key].count += 1;
+    });
+    var monthKeys = Object.keys(monthly).sort();
+    var busiestMonthKey = null;
+    monthKeys.forEach(function (k) {
+      if (!busiestMonthKey || monthly[k].catch > monthly[busiestMonthKey].catch) busiestMonthKey = k;
+    });
+
+    renderBarChart(monthlyChartEl, monthKeys.map(function (k) {
+      var m = monthly[k];
+      return {
+        label: formatMonthLabel(k),
+        value: m.catch,
+        tooltip: formatMonthLabel(k) + " — จับรวม " + fmt(m.catch, 2) + " กก., มูลค่า " + fmt(m.value, 2) + " บาท (" + m.count + " รายการ)"
+      };
+    }), function (v) { return fmt(v, 0); });
+
+    var survivalValues = records
+      .map(function (r) { return calcSurvivalRate(r.stockingCount, calcHarvestedCount(r.catchAmount, r.size)); })
+      .filter(function (v) { return v !== null; });
+
+    var bucketCounts = SURVIVAL_BUCKETS.map(function (b) {
+      return { label: b.label, color: b.color, count: survivalValues.filter(b.test).length };
+    });
+    var busiestBucket = bucketCounts.reduce(function (best, b) {
+      return (!best || b.count > best.count) ? b : best;
+    }, null);
+
+    renderBarChart(survivalDistChartEl, bucketCounts.map(function (b) {
+      return { label: b.label, value: b.count, color: b.color, tooltip: b.label + ": " + b.count + " รายการ" };
+    }), function (v) { return fmt(v, 0) + " รายการ"; });
+
+    var avgCatch = avgOf(records, function (r) { return r.catchAmount; });
+    var avgValue = avgOf(records, function (r) { return r.catchAmount * r.price; });
+    var avgDays = avgOf(records, function (r) { return r.cultureDays; });
+
+    var quickStats = [
+      { label: "เฉลี่ยจับต่อครั้ง (กก.)", value: avgCatch === null ? "-" : fmt(avgCatch, 2) },
+      { label: "เฉลี่ยมูลค่าต่อครั้ง (บาท)", value: avgValue === null ? "-" : fmt(avgValue, 2) },
+      { label: "เฉลี่ยวันเลี้ยง (วัน)", value: avgDays === null ? "-" : fmt(avgDays, 0) },
+      { label: "เดือนที่จับมากที่สุด", value: busiestMonthKey ? formatMonthLabel(busiestMonthKey) : "-" },
+      { label: "อัตรารอดที่พบบ่อยที่สุด", value: (busiestBucket && busiestBucket.count > 0) ? busiestBucket.label : "-" }
+    ];
+
+    statsQuickEl.innerHTML = quickStats.map(function (s) {
+      return "<div class=\"stat\"><div class=\"stat-value\">" + s.value + "</div><div class=\"stat-label\">" + s.label + "</div></div>";
+    }).join("");
+  }
+
   function exportCsv() {
     if (records.length === 0) return;
     var header = ["วันที่จับ", "วันที่ปล่อย", "ฟาร์ม", "บ่อ", "ไซส์", "ราคา", "วันเลี้ยง", "ชนิดกุ้ง", "ลูกกุ้งจากไหน", "จำนวนปล่อย(ตัว)", "จำนวนจับ(กก.)", "จำนวนจับ(ตัว)", "อัตรารอด(%)", "อาหารรวม(กก.)", "FCR", "มูลค่า(บาท)"];
@@ -990,6 +1106,7 @@
     renderTable();
     renderPondSummary();
     renderOverallSummary();
+    renderStats();
   }
 
   updatePreview();

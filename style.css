@@ -510,6 +510,75 @@ tbody tr:hover {
   margin-top: 2px;
 }
 
+#stats-quick {
+  margin-bottom: 24px;
+}
+
+.chart-block {
+  margin-top: 24px;
+}
+
+.chart-block:first-of-type {
+  margin-top: 0;
+}
+
+.chart-title {
+  margin: 0 0 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 190px;
+  padding: 8px 4px 0;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 44px;
+  flex: 1 0 auto;
+  height: 100%;
+  cursor: default;
+}
+
+.bar-value {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+
+.bar {
+  width: 100%;
+  max-width: 46px;
+  border-radius: 4px 4px 0 0;
+  background: var(--primary);
+  min-height: 3px;
+  transition: opacity 0.15s;
+}
+
+.bar-group:hover .bar {
+  opacity: 0.78;
+}
+
+.bar-label {
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-top: 8px;
+  white-space: nowrap;
+  text-align: center;
+}
+
 @media (max-width: 640px) {
   .app-header h1 { font-size: 1.4rem; }
   .card { padding: 14px; }

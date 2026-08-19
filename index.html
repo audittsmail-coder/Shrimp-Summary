@@ -235,6 +235,24 @@
     <div class="overall-grid" id="overall-summary"></div>
   </section>
 
+  <section class="card">
+    <div class="card-header">
+      <h2>สถิติเชิงลึก</h2>
+    </div>
+    <div class="overall-grid" id="stats-quick"></div>
+    <div id="stats-empty" class="empty-state hidden">ยังไม่มีข้อมูลเพียงพอสำหรับทำสถิติ</div>
+    <div id="stats-charts">
+      <div class="chart-block">
+        <h3 class="chart-title">จำนวนที่จับรายเดือน (กก.)</h3>
+        <div class="bar-chart" id="monthly-chart"></div>
+      </div>
+      <div class="chart-block">
+        <h3 class="chart-title">การกระจายอัตรารอด</h3>
+        <div class="bar-chart" id="survival-dist-chart"></div>
+      </div>
+    </div>
+  </section>
+
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
