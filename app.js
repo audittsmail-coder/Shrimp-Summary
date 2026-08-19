@@ -514,7 +514,10 @@
 
         return (
           "<div class=\"pond-card" + (isLatest && g.cycles.length > 1 ? " is-latest" : "") + "\">" +
-            "<button class=\"btn-icon danger cycle-delete-btn\" data-action=\"delete-cycle\" data-ids=\"" + cycleIds + "\" title=\"ลบข้อมูลรอบนี้\">🗑️</button>" +
+            "<div class=\"cycle-card-actions\">" +
+              "<button class=\"btn-icon\" data-action=\"edit-cycle\" data-id=\"" + c.lastEntry.id + "\" title=\"แก้ไขรายการล่าสุดของรอบนี้\">✏️</button>" +
+              "<button class=\"btn-icon danger\" data-action=\"delete-cycle\" data-ids=\"" + cycleIds + "\" title=\"ลบข้อมูลรอบนี้\">🗑️</button>" +
+            "</div>" +
             "<span class=\"cycle-label\">" + cycleLabel + (isLatest && g.cycles.length > 1 ? " · ล่าสุด" : "") + "</span>" +
             "<div class=\"row\"><span>จำนวนครั้งที่จับ</span><span>" + c.entries.length + " ครั้ง</span></div>" +
             "<div class=\"row\"><span>วันเลี้ยง</span><span>" + fmt(c.maxDays, 0) + " วัน</span></div>" +
@@ -553,8 +556,12 @@
   pondSummaryEl.addEventListener("click", function (e) {
     var btn = e.target.closest("button[data-action]");
     if (!btn) return;
-    var ids = btn.getAttribute("data-ids").split(",").filter(Boolean);
     var action = btn.getAttribute("data-action");
+    if (action === "edit-cycle") {
+      startEdit(btn.getAttribute("data-id"));
+      return;
+    }
+    var ids = btn.getAttribute("data-ids").split(",").filter(Boolean);
     if (action === "delete-cycle") {
       deleteRecords(ids, "ต้องการลบข้อมูลรอบเลี้ยงนี้หรือไม่? (" + ids.length + " รายการ)");
     } else if (action === "delete-pond") {

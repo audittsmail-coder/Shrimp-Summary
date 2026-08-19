@@ -434,13 +434,18 @@ tbody tr:hover {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   margin-bottom: 4px;
-  padding-right: 26px;
+  padding-right: 50px;
 }
 
-.cycle-delete-btn {
+.cycle-card-actions {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 2px;
+}
+
+.cycle-card-actions .btn-icon {
   font-size: 0.85rem;
 }
 
