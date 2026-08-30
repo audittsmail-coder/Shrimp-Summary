@@ -225,7 +225,30 @@
     <div class="card-header">
       <h2>ปิดยอดต่อบ่อ</h2>
     </div>
-    <div id="pond-summary" class="pond-grid"></div>
+    <div id="pond-summary-empty" class="empty-state hidden">ยังไม่มีข้อมูลสำหรับปิดยอด</div>
+    <div id="pond-summary-wrap" class="table-wrap hidden">
+      <table id="pond-summary-table">
+        <thead>
+          <tr>
+            <th>บ่อ / รอบเลี้ยง</th>
+            <th>วันเลี้ยง</th>
+            <th>ไซส์ล่าสุด</th>
+            <th>จำนวนปล่อย (ตัว)</th>
+            <th>ชนิดกุ้ง</th>
+            <th>ลูกกุ้งจากไหน</th>
+            <th>จำนวนจับรวม</th>
+            <th>อาหารรวม (กก.)</th>
+            <th>ราคาเฉลี่ย</th>
+            <th>มูลค่ารวม (บาท)</th>
+            <th>อัตรารอด</th>
+            <th>FCR</th>
+            <th>สถานะ</th>
+            <th>จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="pond-summary-body"></tbody>
+      </table>
+    </div>
   </section>
 
   <section class="card">

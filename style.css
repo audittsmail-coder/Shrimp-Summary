@@ -365,17 +365,21 @@ tbody tr:hover {
   padding: 24px 0 4px;
 }
 
-.pond-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.pond-group-row td {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: none;
+  padding-top: 16px;
+  white-space: normal;
+}
+
+.pond-group-row:first-child td {
+  padding-top: 10px;
 }
 
 .pond-group-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
   flex-wrap: wrap;
 }
 
@@ -412,50 +416,22 @@ tbody tr:hover {
   border-color: var(--danger);
 }
 
-.cycle-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 14px;
-}
-
-.pond-card {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  background: linear-gradient(180deg, var(--card-bg), #101816);
-  position: relative;
-}
-
-.pond-card .cycle-label {
-  display: block;
-  font-size: 0.72rem;
+.cycle-data-row td:first-child {
   font-weight: 700;
+  color: var(--text);
+}
+
+.cycle-data-row.is-latest td:first-child {
+  color: var(--primary);
+}
+
+.cycle-data-row.is-imported {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.cycle-data-row.is-imported td:first-child {
+  font-style: italic;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin-bottom: 4px;
-  padding-right: 50px;
-}
-
-.cycle-card-actions {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: flex;
-  gap: 2px;
-}
-
-.cycle-card-actions .btn-icon {
-  font-size: 0.85rem;
-}
-
-.pond-card.is-latest {
-  border-color: var(--primary-dark);
-}
-
-.pond-card.is-imported {
-  border-style: dashed;
-  background: linear-gradient(180deg, var(--input-bg), #101816);
 }
 
 .imported-badge {
@@ -469,35 +445,15 @@ tbody tr:hover {
 }
 
 .delta {
-  font-size: 0.72rem;
+  display: block;
+  font-size: 0.7rem;
   font-weight: 700;
-  margin-left: 6px;
+  margin-top: 3px;
+  white-space: nowrap;
 }
 
 .delta-up { color: #4ade80; }
 .delta-down { color: #f87171; }
-
-.pond-card .row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.85rem;
-  padding: 3px 0;
-  color: var(--text);
-}
-
-.pond-card .row span:first-child {
-  color: var(--muted);
-}
-
-.pond-card .fcr-line {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 700;
-}
 
 .overall-grid {
   display: grid;

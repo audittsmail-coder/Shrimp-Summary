@@ -49,7 +49,9 @@
   var emptyState = document.getElementById("empty-state");
   var searchInput = document.getElementById("search-input");
   var exportCsvBtn = document.getElementById("export-csv-btn");
-  var pondSummaryEl = document.getElementById("pond-summary");
+  var pondSummaryEmptyEl = document.getElementById("pond-summary-empty");
+  var pondSummaryWrapEl = document.getElementById("pond-summary-wrap");
+  var pondSummaryBody = document.getElementById("pond-summary-body");
   var overallSummaryEl = document.getElementById("overall-summary");
   var statsQuickEl = document.getElementById("stats-quick");
   var statsEmptyEl = document.getElementById("stats-empty");
@@ -621,15 +623,35 @@
     });
 
     if (pondKeys.length === 0) {
-      pondSummaryEl.innerHTML = "<p class=\"empty-state\">ยังไม่มีข้อมูลสำหรับปิดยอด</p>";
+      pondSummaryEmptyEl.classList.remove("hidden");
+      pondSummaryWrapEl.classList.add("hidden");
+      pondSummaryBody.innerHTML = "";
       return;
     }
+    pondSummaryEmptyEl.classList.add("hidden");
+    pondSummaryWrapEl.classList.remove("hidden");
 
-    pondSummaryEl.innerHTML = pondKeys.map(function (key) {
+    pondSummaryBody.innerHTML = pondKeys.map(function (key) {
       var g = pondGroups[key];
       g.cycles.sort(function (a, b) { return a.sortKey.localeCompare(b.sortKey); });
 
-      var cardsHtml = g.cycles.map(function (c, index) {
+      var pondIds = g.cycles.reduce(function (acc, c) {
+        return c.imported ? acc : acc.concat(c.entries.map(function (r) { return r.id; }));
+      }, []).join(",");
+      var pondLabel = (g.farm || "ไม่ระบุฟาร์ม") + " · " + (g.pond || "ไม่ระบุบ่อ");
+
+      var headerRow =
+        "<tr class=\"pond-group-row\">" +
+          "<td colspan=\"14\">" +
+            "<div class=\"pond-group-header\">" +
+              "<h3>" + escapeHtml(pondLabel) + "</h3>" +
+              (g.cycles.length > 1 ? "<span class=\"cycle-count-badge\">" + g.cycles.length + " รอบเลี้ยง</span>" : "") +
+              (pondIds ? "<button class=\"btn-icon danger pond-delete-btn\" data-action=\"delete-pond\" data-ids=\"" + pondIds + "\" data-label=\"" + escapeHtml(pondLabel) + "\" title=\"ลบบ่อนี้ทั้งหมด\">🗑️ ลบบ่อนี้</button>" : "") +
+            "</div>" +
+          "</td>" +
+        "</tr>";
+
+      var cycleRows = g.cycles.map(function (c, index) {
         var prev = index > 0 ? g.cycles[index - 1] : null;
         var isLatest = index === g.cycles.length - 1;
         var fcrDelta = prev ? renderDelta(c.fcr, prev.fcr, false, 2, "") : "";
@@ -638,9 +660,12 @@
         var cycleKeyStr = c.farm + "||" + c.pond + "||" + (c.stockingDate || "ไม่ระบุวันปล่อย");
 
         var actionsHtml;
+        var statusHtml;
         if (c.imported) {
-          actionsHtml = "<div class=\"cycle-card-actions\"><span class=\"imported-badge\" title=\"ข้อมูลจากระบบปิดบ่อของอีกแอป (อ่านอย่างเดียว)\">📥 นำเข้า</span></div>";
+          statusHtml = "<span class=\"imported-badge\" title=\"ข้อมูลจากระบบปิดบ่อของอีกแอป (อ่านอย่างเดียว)\">📥 นำเข้า</span>";
+          actionsHtml = "";
         } else {
+          statusHtml = (isLatest && g.cycles.length > 1 ? "<span class=\"cycle-count-badge\">ล่าสุด</span> " : "") + (c.synced ? "✓ ซิงค์แล้ว" : "");
           var cycleIds = c.entries.map(function (r) { return r.id; }).join(",");
           var syncBtn = c.syncDocId
             ? (c.synced
@@ -648,52 +673,36 @@
               : "<button class=\"btn-icon\" data-action=\"sync-closure\" data-cycle-key=\"" + escapeHtml(cycleKeyStr) + "\" title=\"ซิงค์สรุปยอดรอบนี้ไปที่ระบบปิดบ่อ\">📤</button>")
             : "";
           actionsHtml =
-            "<div class=\"cycle-card-actions\">" +
-              syncBtn +
-              "<button class=\"btn-icon\" data-action=\"edit-cycle\" data-id=\"" + c.lastEntry.id + "\" title=\"แก้ไขรายการล่าสุดของรอบนี้\">✏️</button>" +
-              "<button class=\"btn-icon danger\" data-action=\"delete-cycle\" data-ids=\"" + cycleIds + "\" title=\"ลบข้อมูลรอบนี้\">🗑️</button>" +
-            "</div>";
+            syncBtn +
+            "<button class=\"btn-icon\" data-action=\"edit-cycle\" data-id=\"" + c.lastEntry.id + "\" title=\"แก้ไขรายการล่าสุดของรอบนี้\">✏️</button>" +
+            "<button class=\"btn-icon danger\" data-action=\"delete-cycle\" data-ids=\"" + cycleIds + "\" title=\"ลบข้อมูลรอบนี้\">🗑️</button>";
         }
 
         return (
-          "<div class=\"pond-card" + (isLatest && g.cycles.length > 1 ? " is-latest" : "") + (c.imported ? " is-imported" : "") + "\">" +
-            actionsHtml +
-            "<span class=\"cycle-label\">" + cycleLabel + (isLatest && g.cycles.length > 1 ? " · ล่าสุด" : "") + (c.synced ? " · ✓ ซิงค์แล้ว" : "") + "</span>" +
-            (c.imported ? "" : "<div class=\"row\"><span>จำนวนครั้งที่จับ</span><span>" + c.entries.length + " ครั้ง</span></div>") +
-            "<div class=\"row\"><span>วันเลี้ยง</span><span>" + fmt(c.maxDays, 0) + " วัน</span></div>" +
-            "<div class=\"row\"><span>ไซส์ล่าสุด</span><span>" + fmt(c.lastEntry.size, 1) + " ตัว/กก.</span></div>" +
-            "<div class=\"row\"><span>จำนวนปล่อย</span><span>" + fmt(c.stockingCount, 0) + " ตัว</span></div>" +
-            (c.lastEntry.species ? "<div class=\"row\"><span>ชนิดกุ้ง</span><span>" + escapeHtml(c.lastEntry.species) + "</span></div>" : "") +
-            (c.lastEntry.larvaeSource ? "<div class=\"row\"><span>ลูกกุ้งจากไหน</span><span>" + escapeHtml(c.lastEntry.larvaeSource) + "</span></div>" : "") +
-            "<div class=\"row\"><span>จำนวนจับรวม</span><span>" + fmt(c.totalCatch, 2) + " กก. (" + fmt(c.totalHarvestedCount, 0) + " ตัว)</span></div>" +
-            "<div class=\"row\"><span>อาหารรวม (สะสม)</span><span>" + fmt(c.totalFeed, 2) + " กก.</span></div>" +
-            "<div class=\"row\"><span>ราคาเฉลี่ย</span><span>" + fmt(c.avgPrice, 2) + " บาท/กก.</span></div>" +
-            "<div class=\"row\"><span>มูลค่ารวม</span><span>" + fmt(c.totalValue, 2) + " บาท</span></div>" +
-            "<div class=\"fcr-line\"><span>อัตรารอด" + survivalDelta + "</span><span class=\"fcr-badge " + survivalBadgeClass(c.survivalRate) + "\">" + (c.survivalRate === null ? "-" : fmt(c.survivalRate, 1) + "%") + "</span></div>" +
-            "<div class=\"fcr-line\"><span>FCR" + fcrDelta + "</span><span class=\"fcr-badge " + fcrBadgeClass(c.fcr) + "\">" + (c.fcr === null ? "-" : fmt(c.fcr, 2)) + "</span></div>" +
-          "</div>"
+          "<tr class=\"cycle-data-row" + (isLatest && g.cycles.length > 1 ? " is-latest" : "") + (c.imported ? " is-imported" : "") + "\">" +
+            "<td>" + cycleLabel + "</td>" +
+            "<td>" + fmt(c.maxDays, 0) + " วัน</td>" +
+            "<td>" + fmt(c.lastEntry.size, 1) + "</td>" +
+            "<td>" + fmt(c.stockingCount, 0) + "</td>" +
+            "<td>" + (c.lastEntry.species ? escapeHtml(c.lastEntry.species) : "-") + "</td>" +
+            "<td>" + (c.lastEntry.larvaeSource ? escapeHtml(c.lastEntry.larvaeSource) : "-") + "</td>" +
+            "<td>" + fmt(c.totalCatch, 2) + " กก.<br>(" + fmt(c.totalHarvestedCount, 0) + " ตัว)</td>" +
+            "<td>" + fmt(c.totalFeed, 2) + "</td>" +
+            "<td>" + fmt(c.avgPrice, 2) + "</td>" +
+            "<td>" + fmt(c.totalValue, 2) + "</td>" +
+            "<td><span class=\"fcr-badge " + survivalBadgeClass(c.survivalRate) + "\">" + (c.survivalRate === null ? "-" : fmt(c.survivalRate, 1) + "%") + "</span>" + survivalDelta + "</td>" +
+            "<td><span class=\"fcr-badge " + fcrBadgeClass(c.fcr) + "\">" + (c.fcr === null ? "-" : fmt(c.fcr, 2)) + "</span>" + fcrDelta + "</td>" +
+            "<td>" + statusHtml + "</td>" +
+            "<td class=\"row-actions\">" + actionsHtml + "</td>" +
+          "</tr>"
         );
       }).join("");
 
-      var pondIds = g.cycles.reduce(function (acc, c) {
-        return c.imported ? acc : acc.concat(c.entries.map(function (r) { return r.id; }));
-      }, []).join(",");
-      var pondLabel = (g.farm || "ไม่ระบุฟาร์ม") + " · " + (g.pond || "ไม่ระบุบ่อ");
-
-      return (
-        "<div class=\"pond-group\">" +
-          "<div class=\"pond-group-header\">" +
-            "<h3>" + escapeHtml(pondLabel) + "</h3>" +
-            (g.cycles.length > 1 ? "<span class=\"cycle-count-badge\">" + g.cycles.length + " รอบเลี้ยง</span>" : "") +
-            (pondIds ? "<button class=\"btn-icon danger pond-delete-btn\" data-action=\"delete-pond\" data-ids=\"" + pondIds + "\" data-label=\"" + escapeHtml(pondLabel) + "\" title=\"ลบบ่อนี้ทั้งหมด\">🗑️ ลบบ่อนี้</button>" : "") +
-          "</div>" +
-          "<div class=\"cycle-row\">" + cardsHtml + "</div>" +
-        "</div>"
-      );
+      return headerRow + cycleRows;
     }).join("");
   }
 
-  pondSummaryEl.addEventListener("click", function (e) {
+  pondSummaryBody.addEventListener("click", function (e) {
     var btn = e.target.closest("button[data-action]");
     if (!btn) return;
     var action = btn.getAttribute("data-action");
