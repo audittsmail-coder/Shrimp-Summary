@@ -453,6 +453,21 @@ tbody tr:hover {
   border-color: var(--primary-dark);
 }
 
+.pond-card.is-imported {
+  border-style: dashed;
+  background: linear-gradient(180deg, var(--input-bg), #101816);
+}
+
+.imported-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--border);
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 .delta {
   font-size: 0.72rem;
   font-weight: 700;

@@ -97,15 +97,20 @@
     }
   });
 
-  // Read-only lookup into the shrimp-farm-data Firestore database (used by
-  // the farm/pond management app) so farm & pond names and the latest known
-  // size can be pulled in instead of retyped. Independent of the Realtime
-  // Database above — this app only reads from Firestore, never writes.
+  // Lookup into the shrimp-farm-data Firestore database (used by the farm/
+  // pond management app): farms/ponds are read-only (autocomplete + latest
+  // size lookup). The "closures" collection is also read (to show that
+  // app's pond-closing history here) and written to — but only as a plain
+  // insert/overwrite of one summary document per cycle when the user
+  // explicitly clicks "sync". We never touch that app's "harvests"/
+  // "records" collections or replicate its archive-on-close behavior, so
+  // this can't interfere with how that app manages a live pond.
   // Declared before recordsRef.on(...) below since its "value" callback
   // (via renderDatalists) reads firestoreFarms/firestorePonds.
   var firestoreDb = (typeof firebase.firestore === "function") ? firebase.firestore() : null;
   var firestoreFarms = [];
   var firestorePonds = [];
+  var firestoreClosures = [];
 
   function loadFirestoreCatalog() {
     if (!firestoreDb) return;
@@ -132,6 +137,74 @@
       })
       .catch(function (error) {
         console.warn("โหลดรายชื่อบ่อจาก Firestore ไม่สำเร็จ:", error.message);
+      });
+  }
+
+  function loadFirestoreClosures() {
+    if (!firestoreDb) return;
+    firestoreDb.collection("closures").onSnapshot(function (snap) {
+      firestoreClosures = snap.docs.map(function (doc) {
+        var d = doc.data();
+        d.id = doc.id;
+        return d;
+      });
+      renderPondSummary();
+    }, function (error) {
+      console.warn("โหลดข้อมูลปิดบ่อจาก Firestore ไม่สำเร็จ:", error.message);
+    });
+  }
+
+  // Same pondId+stockingDate scheme used for both directions: finding
+  // whether an own cycle has already been synced, and the doc id to write
+  // to when syncing (so re-syncing updates the same document, never
+  // duplicates).
+  function closureDocRef(farmName, pondName) {
+    var matchedFarm = firestoreFarms.find(function (f) { return f.name === farmName; });
+    if (!matchedFarm) return null;
+    var matchedPond = firestorePonds.find(function (p) { return p.farmId === matchedFarm.id && p.name === pondName; });
+    if (!matchedPond) return null;
+    return { farmId: matchedFarm.id, pondId: matchedPond.id };
+  }
+
+  function syncCycleToClosures(cycleKeyStr) {
+    if (!firestoreDb) return;
+    var target = computeOwnCycles().find(function (c) {
+      return (c.farm + "||" + c.pond + "||" + (c.stockingDate || "ไม่ระบุวันปล่อย")) === cycleKeyStr;
+    });
+    if (!target) return;
+    var ref = closureDocRef(target.farm, target.pond);
+    if (!ref) {
+      alert("ไม่พบฟาร์ม/บ่อนี้ในระบบปิดบ่อ กรุณาเลือกฟาร์มและบ่อจากรายชื่อที่มีอยู่แล้ว (ในช่องแนะนำอัตโนมัติ) ก่อนซิงค์");
+      return;
+    }
+    var docId = ref.pondId + "__" + (target.stockingDate || "unknown");
+    var payload = {
+      pondId: ref.pondId,
+      farmId: ref.farmId,
+      closeDate: (target.lastEntry && target.lastEntry.harvestDate) || "",
+      doc: target.maxDays,
+      farmName: target.farm,
+      pondName: target.pond,
+      releaseCount: target.stockingCount,
+      species: (target.lastEntry && target.lastEntry.species) || "",
+      hatchery: (target.lastEntry && target.lastEntry.larvaeSource) || "",
+      sizeCount: target.lastEntry ? target.lastEntry.size : null,
+      pricePerKg: target.avgPrice,
+      weightKg: target.totalCatch,
+      totalFeedKg: target.totalFeed,
+      caughtCount: target.totalHarvestedCount,
+      survivalRatePct: target.survivalRate,
+      fcr: target.fcr,
+      revenue: target.totalValue,
+      createdAt: Date.now(),
+      syncedFrom: "shrimp-summary"
+    };
+    firestoreDb.collection("closures").doc(docId).set(payload)
+      .then(function () {
+        alert("ซิงค์ข้อมูลไปที่ระบบปิดบ่อสำเร็จ");
+      })
+      .catch(function (error) {
+        alert("ซิงค์ไม่สำเร็จ: " + error.message);
       });
   }
 
@@ -454,8 +527,10 @@
       arrow + " " + sign + fmt(diff, digits) + (suffix || "") + " จากรอบก่อน</span>";
   }
 
-  function renderPondSummary() {
-    // Group harvest events into culture cycles: same farm + pond + stocking date.
+  // Group our own harvest events into culture cycles: same farm + pond +
+  // stocking date. Also tags each cycle with whether a matching "closures"
+  // doc already exists in Firestore (synced), and the doc id it would use.
+  function computeOwnCycles() {
     var cycles = {};
     records.forEach(function (r) {
       var key = cycleKey(r);
@@ -465,7 +540,10 @@
       cycles[key].entries.push(r);
     });
 
-    var cycleList = Object.keys(cycles).map(function (key) {
+    var closuresById = {};
+    firestoreClosures.forEach(function (doc) { closuresById[doc.id] = doc; });
+
+    return Object.keys(cycles).map(function (key) {
       var c = cycles[key];
       var totalCatch = c.entries.reduce(function (s, r) { return s + r.catchAmount; }, 0);
       var totalFeed = Math.max.apply(null, c.entries.map(function (r) { return r.totalFeed; }));
@@ -485,8 +563,50 @@
       c.survivalRate = calcSurvivalRate(stockingCount, totalHarvestedCount);
       c.avgPrice = totalCatch ? totalValue / totalCatch : 0;
       c.sortKey = c.stockingDate || (c.entries[0] && c.entries[0].harvestDate) || "";
+      c.imported = false;
+
+      var ref = closureDocRef(c.farm, c.pond);
+      c.syncDocId = ref ? (ref.pondId + "__" + (c.stockingDate || "unknown")) : null;
+      c.synced = !!(c.syncDocId && closuresById[c.syncDocId]);
       return c;
     });
+  }
+
+  // Firestore "closures" docs not already represented by one of our own
+  // cycles above (read-only — no entries/edit/delete, just display).
+  function computeImportedCycles(ownCycles) {
+    var ownSyncIds = {};
+    ownCycles.forEach(function (c) { if (c.syncDocId) ownSyncIds[c.syncDocId] = true; });
+
+    return firestoreClosures
+      .filter(function (doc) { return !ownSyncIds[doc.id]; })
+      .map(function (doc) {
+        var stockingDate = deriveStockingDate(doc.closeDate, doc.doc);
+        return {
+          farm: doc.farmName || "",
+          pond: doc.pondName || "",
+          stockingDate: stockingDate,
+          maxDays: doc.doc || 0,
+          stockingCount: doc.releaseCount || 0,
+          totalCatch: doc.weightKg || 0,
+          totalHarvestedCount: doc.caughtCount || 0,
+          totalFeed: doc.totalFeedKg || 0,
+          avgPrice: doc.pricePerKg || 0,
+          totalValue: doc.revenue || 0,
+          fcr: (doc.fcr === undefined || doc.fcr === null) ? null : doc.fcr,
+          survivalRate: (doc.survivalRatePct === undefined || doc.survivalRatePct === null) ? null : doc.survivalRatePct,
+          lastEntry: { size: doc.sizeCount || 0, species: doc.species || "", larvaeSource: doc.hatchery || "", harvestDate: doc.closeDate || "" },
+          entries: [],
+          sortKey: stockingDate || doc.closeDate || "",
+          imported: true
+        };
+      });
+  }
+
+  function renderPondSummary() {
+    var ownCycles = computeOwnCycles();
+    var importedCycles = computeImportedCycles(ownCycles);
+    var cycleList = ownCycles.concat(importedCycles);
 
     // Group cycles by pond, then order each pond's cycles oldest -> newest for comparison.
     var pondGroups = {};
@@ -515,16 +635,31 @@
         var fcrDelta = prev ? renderDelta(c.fcr, prev.fcr, false, 2, "") : "";
         var survivalDelta = prev ? renderDelta(c.survivalRate, prev.survivalRate, true, 1, "%") : "";
         var cycleLabel = c.stockingDate ? "ปล่อย " + escapeHtml(c.stockingDate) : "ไม่ระบุวันปล่อย";
-        var cycleIds = c.entries.map(function (r) { return r.id; }).join(",");
+        var cycleKeyStr = c.farm + "||" + c.pond + "||" + (c.stockingDate || "ไม่ระบุวันปล่อย");
 
-        return (
-          "<div class=\"pond-card" + (isLatest && g.cycles.length > 1 ? " is-latest" : "") + "\">" +
+        var actionsHtml;
+        if (c.imported) {
+          actionsHtml = "<div class=\"cycle-card-actions\"><span class=\"imported-badge\" title=\"ข้อมูลจากระบบปิดบ่อของอีกแอป (อ่านอย่างเดียว)\">📥 นำเข้า</span></div>";
+        } else {
+          var cycleIds = c.entries.map(function (r) { return r.id; }).join(",");
+          var syncBtn = c.syncDocId
+            ? (c.synced
+              ? "<button class=\"btn-icon\" data-action=\"sync-closure\" data-cycle-key=\"" + escapeHtml(cycleKeyStr) + "\" title=\"อัปเดตข้อมูลที่ซิงค์ไว้ในระบบปิดบ่อ\">🔄</button>"
+              : "<button class=\"btn-icon\" data-action=\"sync-closure\" data-cycle-key=\"" + escapeHtml(cycleKeyStr) + "\" title=\"ซิงค์สรุปยอดรอบนี้ไปที่ระบบปิดบ่อ\">📤</button>")
+            : "";
+          actionsHtml =
             "<div class=\"cycle-card-actions\">" +
+              syncBtn +
               "<button class=\"btn-icon\" data-action=\"edit-cycle\" data-id=\"" + c.lastEntry.id + "\" title=\"แก้ไขรายการล่าสุดของรอบนี้\">✏️</button>" +
               "<button class=\"btn-icon danger\" data-action=\"delete-cycle\" data-ids=\"" + cycleIds + "\" title=\"ลบข้อมูลรอบนี้\">🗑️</button>" +
-            "</div>" +
-            "<span class=\"cycle-label\">" + cycleLabel + (isLatest && g.cycles.length > 1 ? " · ล่าสุด" : "") + "</span>" +
-            "<div class=\"row\"><span>จำนวนครั้งที่จับ</span><span>" + c.entries.length + " ครั้ง</span></div>" +
+            "</div>";
+        }
+
+        return (
+          "<div class=\"pond-card" + (isLatest && g.cycles.length > 1 ? " is-latest" : "") + (c.imported ? " is-imported" : "") + "\">" +
+            actionsHtml +
+            "<span class=\"cycle-label\">" + cycleLabel + (isLatest && g.cycles.length > 1 ? " · ล่าสุด" : "") + (c.synced ? " · ✓ ซิงค์แล้ว" : "") + "</span>" +
+            (c.imported ? "" : "<div class=\"row\"><span>จำนวนครั้งที่จับ</span><span>" + c.entries.length + " ครั้ง</span></div>") +
             "<div class=\"row\"><span>วันเลี้ยง</span><span>" + fmt(c.maxDays, 0) + " วัน</span></div>" +
             "<div class=\"row\"><span>ไซส์ล่าสุด</span><span>" + fmt(c.lastEntry.size, 1) + " ตัว/กก.</span></div>" +
             "<div class=\"row\"><span>จำนวนปล่อย</span><span>" + fmt(c.stockingCount, 0) + " ตัว</span></div>" +
@@ -541,7 +676,7 @@
       }).join("");
 
       var pondIds = g.cycles.reduce(function (acc, c) {
-        return acc.concat(c.entries.map(function (r) { return r.id; }));
+        return c.imported ? acc : acc.concat(c.entries.map(function (r) { return r.id; }));
       }, []).join(",");
       var pondLabel = (g.farm || "ไม่ระบุฟาร์ม") + " · " + (g.pond || "ไม่ระบุบ่อ");
 
@@ -550,7 +685,7 @@
           "<div class=\"pond-group-header\">" +
             "<h3>" + escapeHtml(pondLabel) + "</h3>" +
             (g.cycles.length > 1 ? "<span class=\"cycle-count-badge\">" + g.cycles.length + " รอบเลี้ยง</span>" : "") +
-            "<button class=\"btn-icon danger pond-delete-btn\" data-action=\"delete-pond\" data-ids=\"" + pondIds + "\" data-label=\"" + escapeHtml(pondLabel) + "\" title=\"ลบบ่อนี้ทั้งหมด\">🗑️ ลบบ่อนี้</button>" +
+            (pondIds ? "<button class=\"btn-icon danger pond-delete-btn\" data-action=\"delete-pond\" data-ids=\"" + pondIds + "\" data-label=\"" + escapeHtml(pondLabel) + "\" title=\"ลบบ่อนี้ทั้งหมด\">🗑️ ลบบ่อนี้</button>" : "") +
           "</div>" +
           "<div class=\"cycle-row\">" + cardsHtml + "</div>" +
         "</div>"
@@ -564,6 +699,10 @@
     var action = btn.getAttribute("data-action");
     if (action === "edit-cycle") {
       startEdit(btn.getAttribute("data-id"));
+      return;
+    }
+    if (action === "sync-closure") {
+      syncCycleToClosures(btn.getAttribute("data-cycle-key"));
       return;
     }
     var ids = btn.getAttribute("data-ids").split(",").filter(Boolean);
@@ -1122,5 +1261,6 @@
   updatePreview();
   renderAll();
   loadFirestoreCatalog();
+  loadFirestoreClosures();
 })();
 
