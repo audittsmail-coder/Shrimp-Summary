@@ -365,11 +365,19 @@ tbody tr:hover {
   padding: 24px 0 4px;
 }
 
+.pond-group-row {
+  cursor: pointer;
+}
+
 .pond-group-row td {
   background: rgba(255, 255, 255, 0.03);
   border-bottom: none;
   padding-top: 16px;
   white-space: normal;
+}
+
+.pond-group-row:hover td {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .pond-group-row:first-child td {
@@ -381,6 +389,13 @@ tbody tr:hover {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.group-toggle-icon {
+  color: var(--muted);
+  font-size: 0.8rem;
+  width: 12px;
+  flex-shrink: 0;
 }
 
 .pond-group-header h3 {
@@ -395,6 +410,11 @@ tbody tr:hover {
   padding: 2px 9px;
   border-radius: 999px;
   background: var(--border);
+  color: var(--muted);
+}
+
+.pond-collapsed-preview {
+  font-size: 0.78rem;
   color: var(--muted);
 }
 

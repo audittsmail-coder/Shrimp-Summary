@@ -52,6 +52,8 @@
   var pondSummaryEmptyEl = document.getElementById("pond-summary-empty");
   var pondSummaryWrapEl = document.getElementById("pond-summary-wrap");
   var pondSummaryBody = document.getElementById("pond-summary-body");
+  var pondCollapseAllBtn = document.getElementById("pond-summary-collapse-all-btn");
+  var pondExpandAllBtn = document.getElementById("pond-summary-expand-all-btn");
   var overallSummaryEl = document.getElementById("overall-summary");
   var statsQuickEl = document.getElementById("stats-quick");
   var statsEmptyEl = document.getElementById("stats-empty");
@@ -605,6 +607,9 @@
       });
   }
 
+  var pondCollapseState = {}; // group key ("farm||pond") -> true if collapsed
+  var lastPondGroupKeys = [];
+
   function renderPondSummary() {
     var ownCycles = computeOwnCycles();
     var importedCycles = computeImportedCycles(ownCycles);
@@ -621,6 +626,7 @@
     var pondKeys = Object.keys(pondGroups).sort(function (a, b) {
       return pondGroups[a].farm.localeCompare(pondGroups[b].farm) || pondGroups[a].pond.localeCompare(pondGroups[b].pond);
     });
+    lastPondGroupKeys = pondKeys;
 
     if (pondKeys.length === 0) {
       pondSummaryEmptyEl.classList.remove("hidden");
@@ -634,22 +640,33 @@
     pondSummaryBody.innerHTML = pondKeys.map(function (key) {
       var g = pondGroups[key];
       g.cycles.sort(function (a, b) { return a.sortKey.localeCompare(b.sortKey); });
+      var collapsed = !!pondCollapseState[key];
 
       var pondIds = g.cycles.reduce(function (acc, c) {
         return c.imported ? acc : acc.concat(c.entries.map(function (r) { return r.id; }));
       }, []).join(",");
       var pondLabel = (g.farm || "ไม่ระบุฟาร์ม") + " · " + (g.pond || "ไม่ระบุบ่อ");
+      var latest = g.cycles[g.cycles.length - 1];
+      var collapsedPreview = collapsed
+        ? "<span class=\"pond-collapsed-preview\">ล่าสุด " + (latest.stockingDate ? escapeHtml(latest.stockingDate) : "-") +
+          " · อัตรารอด " + (latest.survivalRate === null ? "-" : fmt(latest.survivalRate, 1) + "%") +
+          " · FCR " + (latest.fcr === null ? "-" : fmt(latest.fcr, 2)) + "</span>"
+        : "";
 
       var headerRow =
-        "<tr class=\"pond-group-row\">" +
+        "<tr class=\"pond-group-row\" data-group-key=\"" + escapeHtml(key) + "\">" +
           "<td colspan=\"14\">" +
             "<div class=\"pond-group-header\">" +
+              "<span class=\"group-toggle-icon\">" + (collapsed ? "▸" : "▾") + "</span>" +
               "<h3>" + escapeHtml(pondLabel) + "</h3>" +
               (g.cycles.length > 1 ? "<span class=\"cycle-count-badge\">" + g.cycles.length + " รอบเลี้ยง</span>" : "") +
+              collapsedPreview +
               (pondIds ? "<button class=\"btn-icon danger pond-delete-btn\" data-action=\"delete-pond\" data-ids=\"" + pondIds + "\" data-label=\"" + escapeHtml(pondLabel) + "\" title=\"ลบบ่อนี้ทั้งหมด\">🗑️ ลบบ่อนี้</button>" : "") +
             "</div>" +
           "</td>" +
         "</tr>";
+
+      if (collapsed) return headerRow;
 
       var cycleRows = g.cycles.map(function (c, index) {
         var prev = index > 0 ? g.cycles[index - 1] : null;
@@ -704,23 +721,41 @@
 
   pondSummaryBody.addEventListener("click", function (e) {
     var btn = e.target.closest("button[data-action]");
-    if (!btn) return;
-    var action = btn.getAttribute("data-action");
-    if (action === "edit-cycle") {
-      startEdit(btn.getAttribute("data-id"));
+    if (btn) {
+      var action = btn.getAttribute("data-action");
+      if (action === "edit-cycle") {
+        startEdit(btn.getAttribute("data-id"));
+        return;
+      }
+      if (action === "sync-closure") {
+        syncCycleToClosures(btn.getAttribute("data-cycle-key"));
+        return;
+      }
+      var ids = btn.getAttribute("data-ids").split(",").filter(Boolean);
+      if (action === "delete-cycle") {
+        deleteRecords(ids, "ต้องการลบข้อมูลรอบเลี้ยงนี้หรือไม่? (" + ids.length + " รายการ)");
+      } else if (action === "delete-pond") {
+        var label = btn.getAttribute("data-label");
+        deleteRecords(ids, "ต้องการลบข้อมูลทั้งหมดของบ่อ \"" + label + "\" หรือไม่? (" + ids.length + " รายการ ทุกรอบเลี้ยง) การลบนี้ไม่สามารถย้อนกลับได้");
+      }
       return;
     }
-    if (action === "sync-closure") {
-      syncCycleToClosures(btn.getAttribute("data-cycle-key"));
-      return;
+    var groupRow = e.target.closest("tr.pond-group-row");
+    if (groupRow) {
+      var key = groupRow.getAttribute("data-group-key");
+      pondCollapseState[key] = !pondCollapseState[key];
+      renderPondSummary();
     }
-    var ids = btn.getAttribute("data-ids").split(",").filter(Boolean);
-    if (action === "delete-cycle") {
-      deleteRecords(ids, "ต้องการลบข้อมูลรอบเลี้ยงนี้หรือไม่? (" + ids.length + " รายการ)");
-    } else if (action === "delete-pond") {
-      var label = btn.getAttribute("data-label");
-      deleteRecords(ids, "ต้องการลบข้อมูลทั้งหมดของบ่อ \"" + label + "\" หรือไม่? (" + ids.length + " รายการ ทุกรอบเลี้ยง) การลบนี้ไม่สามารถย้อนกลับได้");
-    }
+  });
+
+  pondCollapseAllBtn.addEventListener("click", function () {
+    lastPondGroupKeys.forEach(function (key) { pondCollapseState[key] = true; });
+    renderPondSummary();
+  });
+
+  pondExpandAllBtn.addEventListener("click", function () {
+    lastPondGroupKeys.forEach(function (key) { pondCollapseState[key] = false; });
+    renderPondSummary();
   });
 
   function renderOverallSummary() {
