@@ -153,6 +153,8 @@
         return d;
       });
       renderPondSummary();
+      renderOverallSummary();
+      renderStats();
     }, function (error) {
       console.warn("โหลดข้อมูลปิดบ่อจาก Firestore ไม่สำเร็จ:", error.message);
     });
@@ -758,27 +760,28 @@
     renderPondSummary();
   });
 
-  function renderOverallSummary() {
-    var totalRecords = records.length;
-    var pondKeys = new Set(records.map(function (r) { return r.farm + "||" + r.pond; }));
-    var totalCatch = records.reduce(function (s, r) { return s + r.catchAmount; }, 0);
-    var totalValue = records.reduce(function (s, r) { return s + r.catchAmount * r.price; }, 0);
+  // Overall summary + stats are computed over closing CYCLES (our own cycles
+  // plus cycles read in from the other app's Firestore "closures"), not raw
+  // per-event records, so imported data is reflected here too — the two
+  // sources only share cycle-level aggregates, not individual catch events.
+  function computeAllCycles() {
+    var ownCycles = computeOwnCycles();
+    return ownCycles.concat(computeImportedCycles(ownCycles));
+  }
 
-    var feedByCycle = {};
-    var stockingByCycle = {};
-    records.forEach(function (r) {
-      var key = cycleKey(r);
-      feedByCycle[key] = Math.max(feedByCycle[key] || 0, r.totalFeed);
-      stockingByCycle[key] = Math.max(stockingByCycle[key] || 0, r.stockingCount || 0);
-    });
-    var totalFeed = Object.values(feedByCycle).reduce(function (s, v) { return s + v; }, 0);
-    var totalStocking = Object.values(stockingByCycle).reduce(function (s, v) { return s + v; }, 0);
-    var totalHarvestedCount = records.reduce(function (s, r) { return s + calcHarvestedCount(r.catchAmount, r.size); }, 0);
+  function renderOverallSummary() {
+    var allCycles = computeAllCycles();
+    var pondKeys = new Set(allCycles.map(function (c) { return c.farm + "||" + c.pond; }));
+    var totalCatch = allCycles.reduce(function (s, c) { return s + c.totalCatch; }, 0);
+    var totalValue = allCycles.reduce(function (s, c) { return s + c.totalValue; }, 0);
+    var totalFeed = allCycles.reduce(function (s, c) { return s + c.totalFeed; }, 0);
+    var totalStocking = allCycles.reduce(function (s, c) { return s + (c.stockingCount || 0); }, 0);
+    var totalHarvestedCount = allCycles.reduce(function (s, c) { return s + (c.totalHarvestedCount || 0); }, 0);
     var overallFcr = calcFcr(totalFeed, totalCatch);
     var overallSurvival = calcSurvivalRate(totalStocking, totalHarvestedCount);
 
     var stats = [
-      { label: "จำนวนรายการ", value: totalRecords },
+      { label: "จำนวนรอบเลี้ยง", value: allCycles.length },
       { label: "จำนวนบ่อที่บันทึก", value: pondKeys.size },
       { label: "จับรวมทั้งหมด (กก.)", value: fmt(totalCatch, 2) },
       { label: "อาหารรวมทั้งหมด (กก.)", value: fmt(totalFeed, 2) },
@@ -838,7 +841,8 @@
   }
 
   function renderStats() {
-    if (records.length === 0) {
+    var allCycles = computeAllCycles();
+    if (allCycles.length === 0) {
       statsQuickEl.innerHTML = "";
       statsChartsEl.classList.add("hidden");
       statsEmptyEl.classList.remove("hidden");
@@ -848,12 +852,13 @@
     statsEmptyEl.classList.add("hidden");
 
     var monthly = {};
-    records.forEach(function (r) {
-      if (!r.harvestDate) return;
-      var key = r.harvestDate.slice(0, 7);
+    allCycles.forEach(function (c) {
+      var closeDate = c.lastEntry && c.lastEntry.harvestDate;
+      if (!closeDate) return;
+      var key = closeDate.slice(0, 7);
       if (!monthly[key]) monthly[key] = { catch: 0, value: 0, count: 0 };
-      monthly[key].catch += r.catchAmount;
-      monthly[key].value += r.catchAmount * r.price;
+      monthly[key].catch += c.totalCatch;
+      monthly[key].value += c.totalValue;
       monthly[key].count += 1;
     });
     var monthKeys = Object.keys(monthly).sort();
@@ -870,13 +875,13 @@
       return {
         label: formatMonthLabel(k),
         value: pct,
-        tooltip: formatMonthLabel(k) + " — " + fmt(pct, 1) + "% ของยอดจับรวม (จับ " + fmt(m.catch, 2) + " กก., มูลค่า " + fmt(m.value, 2) + " บาท, " + m.count + " รายการ)"
+        tooltip: formatMonthLabel(k) + " — " + fmt(pct, 1) + "% ของยอดจับรวม (จับ " + fmt(m.catch, 2) + " กก., มูลค่า " + fmt(m.value, 2) + " บาท, " + m.count + " รอบเลี้ยง)"
       };
     }), function (v) { return fmt(v, 1) + "%"; });
 
-    var survivalValues = records
-      .map(function (r) { return calcSurvivalRate(r.stockingCount, calcHarvestedCount(r.catchAmount, r.size)); })
-      .filter(function (v) { return v !== null; });
+    var survivalValues = allCycles
+      .map(function (c) { return c.survivalRate; })
+      .filter(function (v) { return v !== null && v !== undefined; });
 
     var bucketCounts = SURVIVAL_BUCKETS.map(function (b) {
       return { label: b.label, color: b.color, count: survivalValues.filter(b.test).length };
@@ -892,19 +897,19 @@
         label: b.label,
         value: pct,
         color: b.color,
-        tooltip: b.label + " — " + fmt(pct, 1) + "% (" + b.count + " รายการ)"
+        tooltip: b.label + " — " + fmt(pct, 1) + "% (" + b.count + " รอบเลี้ยง)"
       };
     }), function (v) { return fmt(v, 1) + "%"; });
 
-    var avgCatch = avgOf(records, function (r) { return r.catchAmount; });
-    var avgValue = avgOf(records, function (r) { return r.catchAmount * r.price; });
-    var avgDays = avgOf(records, function (r) { return r.cultureDays; });
+    var avgCatch = avgOf(allCycles, function (c) { return c.totalCatch; });
+    var avgValue = avgOf(allCycles, function (c) { return c.totalValue; });
+    var avgDays = avgOf(allCycles, function (c) { return c.maxDays; });
 
     var quickStats = [
-      { label: "เฉลี่ยจับต่อครั้ง (กก.)", value: avgCatch === null ? "-" : fmt(avgCatch, 2) },
-      { label: "เฉลี่ยมูลค่าต่อครั้ง (บาท)", value: avgValue === null ? "-" : fmt(avgValue, 2) },
-      { label: "เฉลี่ยวันเลี้ยง (วัน)", value: avgDays === null ? "-" : fmt(avgDays, 0) },
-      { label: "เดือนที่จับมากที่สุด", value: busiestMonthKey ? formatMonthLabel(busiestMonthKey) : "-" },
+      { label: "เฉลี่ยจับต่อรอบ (กก.)", value: avgCatch === null ? "-" : fmt(avgCatch, 2) },
+      { label: "เฉลี่ยมูลค่าต่อรอบ (บาท)", value: avgValue === null ? "-" : fmt(avgValue, 2) },
+      { label: "เฉลี่ยวันเลี้ยงต่อรอบ (วัน)", value: avgDays === null ? "-" : fmt(avgDays, 0) },
+      { label: "เดือนปิดบ่อมากที่สุด", value: busiestMonthKey ? formatMonthLabel(busiestMonthKey) : "-" },
       { label: "อัตรารอดที่พบบ่อยที่สุด", value: (busiestBucket && busiestBucket.count > 0) ? busiestBucket.label : "-" }
     ];
 
