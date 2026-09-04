@@ -520,6 +520,51 @@ tbody tr:hover {
   color: var(--muted);
 }
 
+.summary-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 20px;
+}
+
+.summary-stat-title {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.summary-tile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summary-tile {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 8px;
+  text-align: center;
+  background: var(--primary-light);
+}
+
+.summary-tile-pct {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--primary-text);
+}
+
+.summary-tile-label {
+  font-size: 0.78rem;
+  color: var(--text);
+  margin-top: 2px;
+}
+
+.summary-tile-count {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
 .bar-chart {
   display: flex;
   align-items: flex-end;

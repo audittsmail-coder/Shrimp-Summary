@@ -280,6 +280,15 @@
     </div>
   </section>
 
+  <section class="card">
+    <div class="card-header">
+      <h2>สถิติสรุป</h2>
+      <button id="summary-stats-toggle-btn" class="btn btn-ghost" type="button">ซ่อนสถิติ</button>
+    </div>
+    <div id="summary-stats-empty" class="empty-state hidden">ยังไม่มีข้อมูลเพียงพอสำหรับทำสถิติสรุป</div>
+    <div id="summary-stats-body" class="summary-stats-grid"></div>
+  </section>
+
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>

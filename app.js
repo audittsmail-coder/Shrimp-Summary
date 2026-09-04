@@ -60,6 +60,9 @@
   var statsChartsEl = document.getElementById("stats-charts");
   var monthlyChartEl = document.getElementById("monthly-chart");
   var survivalDistChartEl = document.getElementById("survival-dist-chart");
+  var summaryStatsBodyEl = document.getElementById("summary-stats-body");
+  var summaryStatsEmptyEl = document.getElementById("summary-stats-empty");
+  var summaryStatsToggleBtn = document.getElementById("summary-stats-toggle-btn");
   var farmListEl = document.getElementById("farm-list");
   var pondListEl = document.getElementById("pond-list");
   var speciesListEl = document.getElementById("species-list");
@@ -840,16 +843,114 @@
     }).join("");
   }
 
+  function sizeBucket(size) {
+    if (size <= 40) return "≤40 ตัว/กก.";
+    if (size <= 60) return "41-60 ตัว/กก.";
+    if (size <= 80) return "61-80 ตัว/กก.";
+    if (size <= 100) return "81-100 ตัว/กก.";
+    if (size <= 150) return "101-150 ตัว/กก.";
+    return "151+ ตัว/กก.";
+  }
+
+  function docBucket(days) {
+    if (days < 60) return "<60 วัน";
+    if (days < 80) return "60-79 วัน";
+    if (days < 100) return "80-99 วัน";
+    if (days < 120) return "100-119 วัน";
+    return "120+ วัน";
+  }
+
+  function survivalBucketLabel(rate) {
+    var b = SURVIVAL_BUCKETS.find(function (b) { return b.test(rate); });
+    return b ? b.label : null;
+  }
+
+  function quarterBucket(dateStr) {
+    var parts = String(dateStr).split("-");
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    if (!y || !m) return null;
+    var q = Math.ceil(m / 3);
+    return "ไตรมาส " + q + " (" + y + ")";
+  }
+
+  // Categorical breakdown: for each cycle that has a value, bucket it (via
+  // bucketFn) and tally counts. % is of cycles that HAVE the field, not all
+  // cycles, so an optional field with few entries still reads as 100%.
+  function computeCategoryBuckets(cycles, getter, bucketFn) {
+    var counts = {};
+    var total = 0;
+    cycles.forEach(function (c) {
+      var raw = getter(c);
+      if (raw === null || raw === undefined || raw === "" || raw === 0) return;
+      var label = bucketFn ? bucketFn(raw) : raw;
+      if (!label) return;
+      counts[label] = (counts[label] || 0) + 1;
+      total++;
+    });
+    return Object.keys(counts).map(function (label) {
+      return { label: label, count: counts[label], pct: total ? (counts[label] / total) * 100 : 0 };
+    }).sort(function (a, b) { return b.count - a.count || a.label.localeCompare(b.label); });
+  }
+
+  var summaryStatsCollapsed = false;
+
+  function renderSummaryStats(allCycles) {
+    var categories = [
+      { title: "ชนิดกุ้ง", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.species; }) },
+      { title: "ลูกกุ้งจากไหน", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.larvaeSource; }) },
+      { title: "ไซส์ที่จับส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.size; }, sizeBucket) },
+      { title: "อัตรารอดส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.survivalRate; }, survivalBucketLabel) },
+      { title: "อายุ (DOC) ส่วนใหญ่ที่จับ", items: computeCategoryBuckets(allCycles, function (c) { return c.maxDays; }, docBucket) },
+      { title: "ช่วงไตรมาสที่ปิดบ่อ", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.harvestDate; }, quarterBucket) }
+    ];
+
+    summaryStatsBodyEl.innerHTML = categories.map(function (cat) {
+      var tilesHtml = cat.items.length
+        ? cat.items.map(function (it) {
+            return (
+              "<div class=\"summary-tile\">" +
+                "<div class=\"summary-tile-pct\">" + fmt(it.pct, 0) + "%</div>" +
+                "<div class=\"summary-tile-label\">" + escapeHtml(it.label) + "</div>" +
+                "<div class=\"summary-tile-count\">(" + it.count + ")</div>" +
+              "</div>"
+            );
+          }).join("")
+        : "<p class=\"empty-state\">ไม่มีข้อมูล</p>";
+      return (
+        "<div class=\"summary-stat-col\">" +
+          "<h4 class=\"summary-stat-title\">" + escapeHtml(cat.title) + "</h4>" +
+          "<div class=\"summary-tile-list\">" + tilesHtml + "</div>" +
+        "</div>"
+      );
+    }).join("");
+
+    summaryStatsBodyEl.classList.toggle("hidden", summaryStatsCollapsed);
+    summaryStatsToggleBtn.textContent = summaryStatsCollapsed ? "แสดงสถิติ" : "ซ่อนสถิติ";
+  }
+
+  summaryStatsToggleBtn.addEventListener("click", function () {
+    summaryStatsCollapsed = !summaryStatsCollapsed;
+    summaryStatsBodyEl.classList.toggle("hidden", summaryStatsCollapsed);
+    summaryStatsToggleBtn.textContent = summaryStatsCollapsed ? "แสดงสถิติ" : "ซ่อนสถิติ";
+  });
+
   function renderStats() {
     var allCycles = computeAllCycles();
     if (allCycles.length === 0) {
       statsQuickEl.innerHTML = "";
       statsChartsEl.classList.add("hidden");
       statsEmptyEl.classList.remove("hidden");
+      summaryStatsBodyEl.innerHTML = "";
+      summaryStatsBodyEl.classList.add("hidden");
+      summaryStatsEmptyEl.classList.remove("hidden");
+      summaryStatsToggleBtn.classList.add("hidden");
       return;
     }
     statsChartsEl.classList.remove("hidden");
     statsEmptyEl.classList.add("hidden");
+    summaryStatsEmptyEl.classList.add("hidden");
+    summaryStatsToggleBtn.classList.remove("hidden");
 
     var monthly = {};
     allCycles.forEach(function (c) {
@@ -916,6 +1017,8 @@
     statsQuickEl.innerHTML = quickStats.map(function (s) {
       return "<div class=\"stat\"><div class=\"stat-value\">" + s.value + "</div><div class=\"stat-label\">" + s.label + "</div></div>";
     }).join("");
+
+    renderSummaryStats(allCycles);
   }
 
   function exportCsv() {
