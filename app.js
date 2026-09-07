@@ -82,6 +82,36 @@
   var dataLoaded = false;
   var recordsRef = firebase.database().ref("harvestRecords");
 
+  // "ใหม่" badge on pond-summary cycles: which cycles existed the last time
+  // this browser closed/left the app, loaded once at startup so the badge
+  // doesn't disappear mid-session as soon as something re-renders. The full
+  // current set is saved back on pagehide/visibilitychange so it's used as
+  // the baseline next time the app is opened.
+  var SEEN_CYCLES_KEY = "shrimpSummarySeenCycleIds";
+  var currentSessionCycleIds = new Set();
+
+  function loadSeenCycleIds() {
+    try {
+      var raw = localStorage.getItem(SEEN_CYCLES_KEY);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch (e) {
+      return new Set();
+    }
+  }
+
+  var seenCycleIdsAtStart = loadSeenCycleIds();
+
+  function persistSeenCycleIds() {
+    try {
+      localStorage.setItem(SEEN_CYCLES_KEY, JSON.stringify(Array.from(currentSessionCycleIds)));
+    } catch (e) {}
+  }
+
+  window.addEventListener("pagehide", persistSeenCycleIds);
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) persistSeenCycleIds();
+  });
+
   var offlineWarningTimer = null;
 
   firebase.database().ref(".info/connected").on("value", function (snap) {
@@ -298,6 +328,13 @@
 
   function cycleKey(r) {
     return r.farm + "||" + r.pond + "||" + (r.stockingDate || "ไม่ระบุวันปล่อย");
+  }
+
+  // Stable id used to detect newly-appeared cycles for the "ใหม่" badge.
+  // Imported cycles use the Firestore doc id (stable across renders); own
+  // cycles use the same farm+pond+stockingDate grouping key used elsewhere.
+  function cycleUniqueId(c) {
+    return c.imported ? ("imported:" + c.id) : ("own:" + cycleKey(c));
   }
 
   function fmt(n, digits) {
@@ -592,6 +629,7 @@
       .map(function (doc) {
         var stockingDate = deriveStockingDate(doc.closeDate, doc.doc);
         return {
+          id: doc.id,
           farm: doc.farmName || "",
           pond: doc.pondName || "",
           stockingDate: stockingDate,
@@ -619,6 +657,8 @@
     var ownCycles = computeOwnCycles();
     var importedCycles = computeImportedCycles(ownCycles);
     var cycleList = ownCycles.concat(importedCycles);
+
+    currentSessionCycleIds = new Set(cycleList.map(cycleUniqueId));
 
     // Group cycles by pond, then order each pond's cycles oldest -> newest for comparison.
     var pondGroups = {};
@@ -652,6 +692,7 @@
       }, []).join(",");
       var pondLabel = (g.farm || "ไม่ระบุฟาร์ม") + " · " + (g.pond || "ไม่ระบุบ่อ");
       var latest = g.cycles[g.cycles.length - 1];
+      var groupHasNew = g.cycles.some(function (c) { return !seenCycleIdsAtStart.has(cycleUniqueId(c)); });
       var collapsedPreview = collapsed
         ? "<span class=\"pond-collapsed-preview\">ล่าสุด " + (latest.stockingDate ? escapeHtml(latest.stockingDate) : "-") +
           " · อัตรารอด " + (latest.survivalRate === null ? "-" : fmt(latest.survivalRate, 1) + "%") +
@@ -665,6 +706,7 @@
               "<span class=\"group-toggle-icon\">" + (collapsed ? "▸" : "▾") + "</span>" +
               "<h3>" + escapeHtml(pondLabel) + "</h3>" +
               (g.cycles.length > 1 ? "<span class=\"cycle-count-badge\">" + g.cycles.length + " รอบเลี้ยง</span>" : "") +
+              (collapsed && groupHasNew ? "<span class=\"new-badge\" title=\"มีรอบเลี้ยงใหม่ในบ่อนี้\">ใหม่</span>" : "") +
               collapsedPreview +
               (pondIds ? "<button class=\"btn-icon danger pond-delete-btn\" data-action=\"delete-pond\" data-ids=\"" + pondIds + "\" data-label=\"" + escapeHtml(pondLabel) + "\" title=\"ลบบ่อนี้ทั้งหมด\">🗑️ ลบบ่อนี้</button>" : "") +
             "</div>" +
@@ -676,6 +718,7 @@
       var cycleRows = g.cycles.map(function (c, index) {
         var prev = index > 0 ? g.cycles[index - 1] : null;
         var isLatest = index === g.cycles.length - 1;
+        var isNew = !seenCycleIdsAtStart.has(cycleUniqueId(c));
         var fcrDelta = prev ? renderDelta(c.fcr, prev.fcr, false, 2, "") : "";
         var survivalDelta = prev ? renderDelta(c.survivalRate, prev.survivalRate, true, 1, "%") : "";
         var cycleLabel = c.stockingDate ? "ปล่อย " + escapeHtml(c.stockingDate) : "ไม่ระบุวันปล่อย";
@@ -702,7 +745,7 @@
 
         return (
           "<tr class=\"cycle-data-row" + (isLatest && g.cycles.length > 1 ? " is-latest" : "") + (c.imported ? " is-imported" : "") + "\">" +
-            "<td>" + cycleLabel + "</td>" +
+            "<td>" + cycleLabel + (isNew ? " <span class=\"new-badge\" title=\"รอบเลี้ยงที่เพิ่งปรากฏใหม่\">ใหม่</span>" : "") + "</td>" +
             "<td>" + fmt(c.maxDays, 0) + " วัน</td>" +
             "<td>" + fmt(c.lastEntry.size, 1) + "</td>" +
             "<td>" + fmt(c.stockingCount, 0) + "</td>" +

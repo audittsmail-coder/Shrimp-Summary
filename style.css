@@ -464,6 +464,17 @@ tbody tr:hover {
   white-space: nowrap;
 }
 
+.new-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.16);
+  padding: 1px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
 .delta {
   display: block;
   font-size: 0.7rem;
