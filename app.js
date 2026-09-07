@@ -60,6 +60,8 @@
   var statsChartsEl = document.getElementById("stats-charts");
   var monthlyChartEl = document.getElementById("monthly-chart");
   var survivalDistChartEl = document.getElementById("survival-dist-chart");
+  var sizeProductionChartEl = document.getElementById("size-production-chart");
+  var sizeProductionWinnerEl = document.getElementById("size-production-winner");
   var summaryStatsBodyEl = document.getElementById("summary-stats-body");
   var summaryStatsEmptyEl = document.getElementById("summary-stats-empty");
   var summaryStatsToggleBtn = document.getElementById("summary-stats-toggle-btn");
@@ -946,6 +948,52 @@
     return b ? b.color : null;
   }
 
+  // Unlike computeCategoryBuckets (counts cycles per bucket), this sums the
+  // actual catch weight per size range, to answer "which size range is
+  // actually producing the most kg" rather than "which size is most common".
+  function computeSizeProductionBuckets(cycles) {
+    var buckets = {};
+    cycles.forEach(function (c) {
+      var size = c.lastEntry && c.lastEntry.size;
+      if (!size) return;
+      var label = sizeBucket(size);
+      if (!buckets[label]) buckets[label] = { weight: 0, count: 0 };
+      buckets[label].weight += c.totalCatch || 0;
+      buckets[label].count += 1;
+    });
+    return Object.keys(buckets).map(function (label) {
+      return { label: label, weight: buckets[label].weight, count: buckets[label].count };
+    }).sort(function (a, b) { return b.weight - a.weight; });
+  }
+
+  function renderSizeProductionChart(allCycles) {
+    var buckets = computeSizeProductionBuckets(allCycles);
+    if (buckets.length === 0) {
+      sizeProductionChartEl.innerHTML = "<p class=\"empty-state\">ไม่มีข้อมูล</p>";
+      sizeProductionWinnerEl.innerHTML = "";
+      sizeProductionWinnerEl.classList.add("hidden");
+      return;
+    }
+    var maxWeight = buckets[0].weight;
+
+    sizeProductionChartEl.innerHTML = buckets.map(function (b, index) {
+      var pct = maxWeight ? (b.weight / maxWeight) * 100 : 0;
+      var color = index === 0 ? "var(--primary)" : "var(--muted)";
+      return (
+        "<div class=\"rank-bar-row\" title=\"" + escapeHtml(b.label) + " — " + fmt(b.weight, 2) + " กก. (" + b.count + " รอบเลี้ยง)\">" +
+          "<div class=\"rank-bar-row-label\">" +
+            "<span class=\"rank-bar-name\">" + escapeHtml(b.label) + "</span>" +
+            "<span class=\"rank-bar-value\">" + fmt(b.weight, 0) + " กก.<span class=\"rank-bar-count\">(" + b.count + " รอบเลี้ยง)</span></span>" +
+          "</div>" +
+          "<div class=\"rank-bar-track\"><div class=\"rank-bar-fill\" style=\"width:" + pct + "%;background:" + color + ";\"></div></div>" +
+        "</div>"
+      );
+    }).join("");
+
+    sizeProductionWinnerEl.classList.remove("hidden");
+    sizeProductionWinnerEl.innerHTML = "🏆 ช่วงไซส์ " + escapeHtml(buckets[0].label) + " ให้ผลผลิตมากที่สุด (" + fmt(buckets[0].weight, 0) + " กก.)";
+  }
+
   function renderSummaryStats(allCycles) {
     var categories = [
       { title: "ชนิดกุ้ง", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.species; }) },
@@ -1072,6 +1120,7 @@
       return "<div class=\"stat\"><div class=\"stat-value\">" + s.value + "</div><div class=\"stat-label\">" + s.label + "</div></div>";
     }).join("");
 
+    renderSizeProductionChart(allCycles);
     renderSummaryStats(allCycles);
   }
 
