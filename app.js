@@ -938,24 +938,35 @@
 
   var summaryStatsCollapsed = false;
 
+  // Survival buckets reuse the same good/ok/bad colors as the bar chart
+  // above (a status dimension); every other category is a plain magnitude
+  // ranking, so it stays a single brand hue.
+  function survivalBucketColor(label) {
+    var b = SURVIVAL_BUCKETS.find(function (b) { return b.label === label; });
+    return b ? b.color : null;
+  }
+
   function renderSummaryStats(allCycles) {
     var categories = [
       { title: "ชนิดกุ้ง", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.species; }) },
       { title: "ลูกกุ้งจากไหน", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.larvaeSource; }) },
       { title: "ไซส์ที่จับส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.size; }, sizeBucket) },
-      { title: "อัตรารอดส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.survivalRate; }, survivalBucketLabel) },
+      { title: "อัตรารอดส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.survivalRate; }, survivalBucketLabel), colorFn: survivalBucketColor },
       { title: "อายุ (DOC) ส่วนใหญ่ที่จับ", items: computeCategoryBuckets(allCycles, function (c) { return c.maxDays; }, docBucket) },
       { title: "ช่วงไตรมาสที่ปิดบ่อ", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.harvestDate; }, quarterBucket) }
     ];
 
     summaryStatsBodyEl.innerHTML = categories.map(function (cat) {
-      var tilesHtml = cat.items.length
+      var rowsHtml = cat.items.length
         ? cat.items.map(function (it) {
+            var color = (cat.colorFn && cat.colorFn(it.label)) || "var(--primary)";
             return (
-              "<div class=\"summary-tile\">" +
-                "<div class=\"summary-tile-pct\">" + fmt(it.pct, 0) + "%</div>" +
-                "<div class=\"summary-tile-label\">" + escapeHtml(it.label) + "</div>" +
-                "<div class=\"summary-tile-count\">(" + it.count + ")</div>" +
+              "<div class=\"rank-bar-row\" title=\"" + escapeHtml(it.label) + " — " + fmt(it.pct, 0) + "% (" + it.count + " รอบเลี้ยง)\">" +
+                "<div class=\"rank-bar-row-label\">" +
+                  "<span class=\"rank-bar-name\">" + escapeHtml(it.label) + "</span>" +
+                  "<span class=\"rank-bar-value\">" + fmt(it.pct, 0) + "%<span class=\"rank-bar-count\">(" + it.count + ")</span></span>" +
+                "</div>" +
+                "<div class=\"rank-bar-track\"><div class=\"rank-bar-fill\" style=\"width:" + it.pct + "%;background:" + color + ";\"></div></div>" +
               "</div>"
             );
           }).join("")
@@ -963,7 +974,7 @@
       return (
         "<div class=\"summary-stat-col\">" +
           "<h4 class=\"summary-stat-title\">" + escapeHtml(cat.title) + "</h4>" +
-          "<div class=\"summary-tile-list\">" + tilesHtml + "</div>" +
+          "<div class=\"rank-bar-list\">" + rowsHtml + "</div>" +
         "</div>"
       );
     }).join("");
