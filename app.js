@@ -936,7 +936,9 @@
   // Categorical breakdown: for each cycle that has a value, bucket it (via
   // bucketFn) and tally counts. % is of cycles that HAVE the field, not all
   // cycles, so an optional field with few entries still reads as 100%.
-  function computeCategoryBuckets(cycles, getter, bucketFn) {
+  // sortOrder (optional): a label array giving an explicit display order
+  // (e.g. survival rate high -> low), instead of the default sort by count.
+  function computeCategoryBuckets(cycles, getter, bucketFn, sortOrder) {
     var counts = {};
     var total = 0;
     cycles.forEach(function (c) {
@@ -947,9 +949,15 @@
       counts[label] = (counts[label] || 0) + 1;
       total++;
     });
-    return Object.keys(counts).map(function (label) {
+    var items = Object.keys(counts).map(function (label) {
       return { label: label, count: counts[label], pct: total ? (counts[label] / total) * 100 : 0 };
-    }).sort(function (a, b) { return b.count - a.count || a.label.localeCompare(b.label); });
+    });
+    if (sortOrder) {
+      items.sort(function (a, b) { return sortOrder.indexOf(a.label) - sortOrder.indexOf(b.label); });
+    } else {
+      items.sort(function (a, b) { return b.count - a.count || a.label.localeCompare(b.label); });
+    }
+    return items;
   }
 
   var summaryStatsCollapsed = false;
@@ -1013,7 +1021,7 @@
       { title: "ชนิดกุ้ง", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.species; }) },
       { title: "ลูกกุ้งจากไหน", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.larvaeSource; }) },
       { title: "ไซส์ที่จับส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.size; }, sizeBucket), colorFn: sizeBucketColor },
-      { title: "อัตรารอดส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.survivalRate; }, survivalBucketLabel), colorFn: survivalBucketColor },
+      { title: "อัตรารอดส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.survivalRate; }, survivalBucketLabel, SURVIVAL_BUCKETS.map(function (b) { return b.label; }).reverse()), colorFn: survivalBucketColor },
       { title: "อายุ (DOC) ส่วนใหญ่ที่จับ", items: computeCategoryBuckets(allCycles, function (c) { return c.maxDays; }, docBucket) },
       { title: "ช่วงไตรมาสที่ปิดบ่อ", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.harvestDate; }, quarterBucket) }
     ];
