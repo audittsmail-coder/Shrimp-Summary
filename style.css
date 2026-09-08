@@ -612,6 +612,10 @@ tbody tr:hover {
   border-radius: 4px;
 }
 
+#size-production-chart .rank-bar-track {
+  max-width: 50%;
+}
+
 .bar-chart {
   display: flex;
   align-items: flex-end;
