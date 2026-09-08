@@ -21,7 +21,7 @@
 
 body {
   margin: 0;
-  font-size: 14px;
+  font-size: 12.5px;
   font-family: "Sarabun", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg);
   color: var(--text);
