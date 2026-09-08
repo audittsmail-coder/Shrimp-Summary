@@ -896,21 +896,6 @@
     return "151+ ตัว/กก.";
   }
 
-  // Fewer ตัว/กก. means bigger, more valuable shrimp — good/ok/bad by the
-  // same green/yellow/red the survival & FCR badges already use.
-  var SIZE_BUCKET_COLOR = {
-    "≤40 ตัว/กก.": "#4ade80",
-    "41-60 ตัว/กก.": "#4ade80",
-    "61-80 ตัว/กก.": "#facc15",
-    "81-100 ตัว/กก.": "#facc15",
-    "101-150 ตัว/กก.": "#f87171",
-    "151+ ตัว/กก.": "#f87171"
-  };
-
-  function sizeBucketColor(label) {
-    return SIZE_BUCKET_COLOR[label] || null;
-  }
-
   function docBucket(days) {
     if (days < 60) return "<60 วัน";
     if (days < 80) return "60-79 วัน";
@@ -962,14 +947,6 @@
 
   var summaryStatsCollapsed = false;
 
-  // Survival buckets reuse the same good/ok/bad colors as the bar chart
-  // above (a status dimension); every other category is a plain magnitude
-  // ranking, so it stays a single brand hue.
-  function survivalBucketColor(label) {
-    var b = SURVIVAL_BUCKETS.find(function (b) { return b.label === label; });
-    return b ? b.color : null;
-  }
-
   // Unlike computeCategoryBuckets (counts cycles per bucket), this sums the
   // actual catch weight per size range, to answer "which size range is
   // actually producing the most kg" rather than "which size is most common".
@@ -1016,20 +993,29 @@
     sizeProductionWinnerEl.innerHTML = "🏆 ช่วงไซส์ " + escapeHtml(buckets[0].label) + " ให้ผลผลิตมากที่สุด (" + fmt(buckets[0].weight, 0) + " กก.)";
   }
 
+  // Rank-based, not meaning-based: #1 gets the brand accent, #2 the amber
+  // accent, everything past that fades to muted — same treatment for every
+  // category (identity dimensions and value ranges alike).
+  var RANK_COLORS = ["var(--primary)", "var(--accent)", "var(--muted)"];
+
+  function rankColor(index) {
+    return RANK_COLORS[Math.min(index, RANK_COLORS.length - 1)];
+  }
+
   function renderSummaryStats(allCycles) {
     var categories = [
       { title: "ชนิดกุ้ง", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.species; }) },
       { title: "ลูกกุ้งจากไหน", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.larvaeSource; }) },
-      { title: "ไซส์ที่จับส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.size; }, sizeBucket), colorFn: sizeBucketColor },
-      { title: "อัตรารอดส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.survivalRate; }, survivalBucketLabel, SURVIVAL_BUCKETS.map(function (b) { return b.label; }).reverse()), colorFn: survivalBucketColor },
+      { title: "ไซส์ที่จับส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.size; }, sizeBucket) },
+      { title: "อัตรารอดส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.survivalRate; }, survivalBucketLabel, SURVIVAL_BUCKETS.map(function (b) { return b.label; }).reverse()) },
       { title: "อายุ (DOC) ส่วนใหญ่ที่จับ", items: computeCategoryBuckets(allCycles, function (c) { return c.maxDays; }, docBucket) },
       { title: "ช่วงไตรมาสที่ปิดบ่อ", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.harvestDate; }, quarterBucket) }
     ];
 
     summaryStatsBodyEl.innerHTML = categories.map(function (cat) {
       var rowsHtml = cat.items.length
-        ? cat.items.map(function (it) {
-            var color = (cat.colorFn && cat.colorFn(it.label)) || "var(--primary)";
+        ? cat.items.map(function (it, index) {
+            var color = rankColor(index);
             return (
               "<div class=\"rank-bar-row\" title=\"" + escapeHtml(it.label) + " — " + fmt(it.pct, 0) + "% (" + it.count + " รอบเลี้ยง)\">" +
                 "<div class=\"rank-bar-row-label\">" +
@@ -1043,7 +1029,7 @@
         : "<p class=\"empty-state\">ไม่มีข้อมูล</p>";
       return (
         "<div class=\"summary-stat-col\">" +
-          "<h4 class=\"summary-stat-title\">" + escapeHtml(cat.title) + "</h4>" +
+          "<h4 class=\"summary-stat-title\"><span class=\"summary-stat-marker\"></span>" + escapeHtml(cat.title) + "</h4>" +
           "<div class=\"rank-bar-list\">" + rowsHtml + "</div>" +
         "</div>"
       );

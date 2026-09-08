@@ -555,6 +555,17 @@ tbody tr:hover {
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.summary-stat-marker {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--primary);
+  flex-shrink: 0;
 }
 
 .rank-bar-list {
