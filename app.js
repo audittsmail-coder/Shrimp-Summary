@@ -1054,20 +1054,24 @@
     renderSummaryStats(allCycles);
   }
 
+  // Exports per closing CYCLE (own + imported from the other app), matching
+  // what ปิดยอดต่อบ่อ shows — so it works even for users whose data is
+  // entirely "นำเข้า" and never typed a record into this app directly.
   function exportCsv() {
-    if (records.length === 0) {
-      alert("ยังไม่มีรายการที่กรอกเองในแอปนี้ให้ส่งออก (ข้อมูลที่เห็นในตารางอาจเป็นข้อมูลที่นำเข้ามาจากอีกแอป ซึ่งไม่รวมอยู่ในไฟล์ CSV นี้)");
+    var allCycles = computeAllCycles();
+    if (allCycles.length === 0) {
+      alert("ยังไม่มีข้อมูลให้ส่งออก");
       return;
     }
-    var header = ["วันที่จับ", "วันที่ปล่อย", "ฟาร์ม", "บ่อ", "ไซส์", "ราคา", "วันเลี้ยง", "ชนิดกุ้ง", "ลูกกุ้งจากไหน", "จำนวนปล่อย(ตัว)", "จำนวนจับ(กก.)", "จำนวนจับ(ตัว)", "อัตรารอด(%)", "อาหารรวม(กก.)", "FCR", "มูลค่า(บาท)"];
-    var rows = records.map(function (r) {
-      var fcr = calcFcr(r.totalFeed, r.catchAmount);
-      var harvestedCount = calcHarvestedCount(r.catchAmount, r.size);
-      var survivalRate = calcSurvivalRate(r.stockingCount, harvestedCount);
+    var header = ["ฟาร์ม", "บ่อ", "วันที่ปล่อย", "วันเลี้ยง(วัน)", "ไซส์ล่าสุด", "จำนวนปล่อย(ตัว)", "ชนิดกุ้ง", "ลูกกุ้งจากไหน", "จำนวนจับรวม(กก.)", "จำนวนจับรวม(ตัว)", "อาหารรวม(กก.)", "ราคาเฉลี่ย(บาท/กก.)", "มูลค่ารวม(บาท)", "อัตรารอด(%)", "FCR", "ที่มาของข้อมูล"];
+    var rows = allCycles.map(function (c) {
       return [
-        r.harvestDate, r.stockingDate, r.farm, r.pond, r.size, r.price, r.cultureDays, r.species, r.larvaeSource, r.stockingCount,
-        r.catchAmount, harvestedCount.toFixed(0), survivalRate === null ? "" : survivalRate.toFixed(1),
-        r.totalFeed, fcr === null ? "" : fcr.toFixed(2), (r.catchAmount * r.price).toFixed(2)
+        c.farm, c.pond, c.stockingDate || "", c.maxDays, c.lastEntry.size, c.stockingCount,
+        c.lastEntry.species || "", c.lastEntry.larvaeSource || "",
+        c.totalCatch, c.totalHarvestedCount.toFixed(0), c.totalFeed, c.avgPrice.toFixed(2), c.totalValue.toFixed(2),
+        c.survivalRate === null ? "" : c.survivalRate.toFixed(1),
+        c.fcr === null ? "" : c.fcr.toFixed(2),
+        c.imported ? "นำเข้าจากอีกแอป" : "กรอกเอง"
       ];
     });
     var csv = "﻿" + [header].concat(rows).map(function (row) {
