@@ -979,11 +979,11 @@
       var color = index === 0 ? "var(--primary)" : "var(--muted)";
       return (
         "<div class=\"rank-bar-row\" title=\"" + escapeHtml(b.label) + " — " + fmt(b.weight, 2) + " กก. (" + b.count + " รอบเลี้ยง)\">" +
-          "<div class=\"rank-bar-row-label\">" +
-            "<span class=\"rank-bar-name\">" + escapeHtml(b.label) + "</span>" +
+          "<span class=\"rank-bar-name\">" + escapeHtml(b.label) + "</span>" +
+          "<div class=\"size-bar-line\">" +
+            "<div class=\"rank-bar-track\"><div class=\"rank-bar-fill\" style=\"width:" + pct + "%;background:" + color + ";\"></div></div>" +
             "<span class=\"rank-bar-value\">" + fmt(b.weight, 0) + " กก.<span class=\"rank-bar-count\">(" + b.count + " รอบเลี้ยง)</span></span>" +
           "</div>" +
-          "<div class=\"rank-bar-track\"><div class=\"rank-bar-fill\" style=\"width:" + pct + "%;background:" + color + ";\"></div></div>" +
         "</div>"
       );
     }).join("");
