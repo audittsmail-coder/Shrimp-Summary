@@ -45,9 +45,6 @@
   var submitBtn = document.getElementById("submit-btn");
   var formTitle = document.getElementById("form-title");
   var cancelEditBtn = document.getElementById("cancel-edit-btn");
-  var recordsBody = document.getElementById("records-body");
-  var emptyState = document.getElementById("empty-state");
-  var searchInput = document.getElementById("search-input");
   var exportCsvBtn = document.getElementById("export-csv-btn");
   var pondSummaryEmptyEl = document.getElementById("pond-summary-empty");
   var pondSummaryWrapEl = document.getElementById("pond-summary-wrap");
@@ -80,7 +77,6 @@
   var bulkPreviewBody = document.getElementById("bulk-preview-body");
 
   var records = [];
-  var dataLoaded = false;
   var recordsRef = firebase.database().ref("harvestRecords");
 
   // "ใหม่" badge on pond-summary cycles: which cycles existed the last time
@@ -290,7 +286,6 @@
         r.id = key;
         return r;
       });
-    dataLoaded = true;
     renderAll();
   }, function (error) {
     syncStatusEl.textContent = "❌ เชื่อมต่อฐานข้อมูลไม่สำเร็จ: " + error.message;
@@ -447,13 +442,6 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function deleteRecord(id) {
-    if (!confirm("ต้องการลบรายการนี้หรือไม่?")) return;
-    recordsRef.child(id).remove().catch(function (error) {
-      alert("ลบรายการไม่สำเร็จ: " + error.message);
-    });
-  }
-
   function deleteRecords(ids, confirmMessage) {
     if (ids.length === 0) return;
     if (!confirm(confirmMessage)) return;
@@ -508,60 +496,6 @@
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c];
     });
   }
-
-  function renderTable() {
-    var query = searchInput.value.trim().toLowerCase();
-    var filtered = records
-      .filter(function (r) {
-        if (!query) return true;
-        return (r.farm + " " + r.pond).toLowerCase().indexOf(query) !== -1;
-      })
-      .sort(function (a, b) { return (b.harvestDate || "").localeCompare(a.harvestDate || ""); });
-
-    recordsBody.innerHTML = "";
-    emptyState.textContent = dataLoaded ? "ยังไม่มีรายการ เริ่มบันทึกรายการจับกุ้งด้านบนได้เลย" : "กำลังโหลดข้อมูล...";
-    emptyState.classList.toggle("hidden", records.length !== 0);
-
-    filtered.forEach(function (r) {
-      var fcr = calcFcr(r.totalFeed, r.catchAmount);
-      var value = r.catchAmount * r.price;
-      var harvestedCount = calcHarvestedCount(r.catchAmount, r.size);
-      var survivalRate = calcSurvivalRate(r.stockingCount, harvestedCount);
-      var tr = document.createElement("tr");
-      tr.innerHTML =
-        "<td>" + escapeHtml(r.harvestDate || "-") + "</td>" +
-        "<td>" + escapeHtml(r.stockingDate || "-") + "</td>" +
-        "<td>" + escapeHtml(r.farm || "-") + "</td>" +
-        "<td>" + escapeHtml(r.pond || "-") + "</td>" +
-        "<td>" + fmt(r.size, 1) + "</td>" +
-        "<td>" + fmt(r.price, 2) + "</td>" +
-        "<td>" + fmt(r.cultureDays, 0) + "</td>" +
-        "<td>" + escapeHtml(r.species || "-") + "</td>" +
-        "<td>" + escapeHtml(r.larvaeSource || "-") + "</td>" +
-        "<td>" + fmt(r.stockingCount, 0) + "</td>" +
-        "<td>" + fmt(r.catchAmount, 2) + "</td>" +
-        "<td>" + fmt(harvestedCount, 0) + "</td>" +
-        "<td><span class=\"fcr-badge " + survivalBadgeClass(survivalRate) + "\">" + (survivalRate === null ? "-" : fmt(survivalRate, 1) + "%") + "</span></td>" +
-        "<td>" + fmt(r.totalFeed, 2) + "</td>" +
-        "<td><span class=\"fcr-badge " + fcrBadgeClass(fcr) + "\">" + (fcr === null ? "-" : fmt(fcr, 2)) + "</span></td>" +
-        "<td>" + fmt(value, 2) + "</td>" +
-        "<td class=\"row-actions\">" +
-          "<button class=\"btn-icon\" data-action=\"edit\" data-id=\"" + r.id + "\" title=\"แก้ไข\">✏️</button>" +
-          "<button class=\"btn-icon danger\" data-action=\"delete\" data-id=\"" + r.id + "\" title=\"ลบ\">🗑️</button>" +
-        "</td>";
-      recordsBody.appendChild(tr);
-    });
-  }
-
-  recordsBody.addEventListener("click", function (e) {
-    var btn = e.target.closest("button[data-action]");
-    if (!btn) return;
-    var id = btn.getAttribute("data-id");
-    if (btn.getAttribute("data-action") === "edit") startEdit(id);
-    if (btn.getAttribute("data-action") === "delete") deleteRecord(id);
-  });
-
-  searchInput.addEventListener("input", renderTable);
 
   function renderDelta(newVal, prevVal, higherIsBetter, digits, suffix) {
     if (newVal === null || prevVal === null || prevVal === undefined) return "";
@@ -1503,7 +1437,6 @@
 
   function renderAll() {
     renderDatalists();
-    renderTable();
     renderPondSummary();
     renderOverallSummary();
     renderStats();
