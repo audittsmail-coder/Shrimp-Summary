@@ -858,14 +858,13 @@
     return valid.reduce(function (s, v) { return s + v; }, 0) / valid.length;
   }
 
-  // Same good/ok/bad thresholds as survivalBadgeClass(), split finer for a
-  // distribution chart. Colors are the badges' solid text colors (not the
-  // translucent chip background) so they read clearly as bar fills.
+  // 20-point-wide bins, matching the sister app's ranges.
   var SURVIVAL_BUCKETS = [
-    { label: "<50%", test: function (v) { return v < 50; }, color: "#f87171" },
-    { label: "50-70%", test: function (v) { return v >= 50 && v < 70; }, color: "#facc15" },
-    { label: "70-90%", test: function (v) { return v >= 70 && v < 90; }, color: "#4ade80" },
-    { label: "90%+", test: function (v) { return v >= 90; }, color: "#4ade80" }
+    { label: "<30%", test: function (v) { return v < 30; } },
+    { label: "30-49%", test: function (v) { return v >= 30 && v < 50; } },
+    { label: "50-69%", test: function (v) { return v >= 50 && v < 70; } },
+    { label: "70-89%", test: function (v) { return v >= 70 && v < 90; } },
+    { label: "90%+", test: function (v) { return v >= 90; } }
   ];
 
   function renderBarChart(container, items, valueFormatter) {
@@ -1095,7 +1094,7 @@
       .filter(function (v) { return v !== null && v !== undefined; });
 
     var bucketCounts = SURVIVAL_BUCKETS.map(function (b) {
-      return { label: b.label, color: b.color, count: survivalValues.filter(b.test).length };
+      return { label: b.label, count: survivalValues.filter(b.test).length };
     });
     var busiestBucket = bucketCounts.reduce(function (best, b) {
       return (!best || b.count > best.count) ? b : best;
