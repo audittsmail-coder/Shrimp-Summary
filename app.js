@@ -59,7 +59,6 @@
   var statsEmptyEl = document.getElementById("stats-empty");
   var statsChartsEl = document.getElementById("stats-charts");
   var monthlyChartEl = document.getElementById("monthly-chart");
-  var survivalDistChartEl = document.getElementById("survival-dist-chart");
   var sizeProductionChartEl = document.getElementById("size-production-chart");
   var sizeProductionWinnerEl = document.getElementById("size-production-winner");
   var summaryStatsBodyEl = document.getElementById("summary-stats-body");
@@ -1092,17 +1091,6 @@
     var busiestBucket = bucketCounts.reduce(function (best, b) {
       return (!best || b.count > best.count) ? b : best;
     }, null);
-
-    var totalSurvivalRecords = survivalValues.length;
-    renderBarChart(survivalDistChartEl, bucketCounts.map(function (b) {
-      var pct = totalSurvivalRecords ? (b.count / totalSurvivalRecords) * 100 : 0;
-      return {
-        label: b.label,
-        value: pct,
-        color: b.color,
-        tooltip: b.label + " — " + fmt(pct, 1) + "% (" + b.count + " รอบเลี้ยง)"
-      };
-    }), function (v) { return fmt(v, 1) + "%"; });
 
     var avgCatch = avgOf(allCycles, function (c) { return c.totalCatch; });
     var avgValue = avgOf(allCycles, function (c) { return c.totalValue; });
