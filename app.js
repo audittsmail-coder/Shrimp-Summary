@@ -896,6 +896,21 @@
     return "151+ ตัว/กก.";
   }
 
+  // Fewer ตัว/กก. means bigger, more valuable shrimp — good/ok/bad by the
+  // same green/yellow/red the survival & FCR badges already use.
+  var SIZE_BUCKET_COLOR = {
+    "≤40 ตัว/กก.": "#4ade80",
+    "41-60 ตัว/กก.": "#4ade80",
+    "61-80 ตัว/กก.": "#facc15",
+    "81-100 ตัว/กก.": "#facc15",
+    "101-150 ตัว/กก.": "#f87171",
+    "151+ ตัว/กก.": "#f87171"
+  };
+
+  function sizeBucketColor(label) {
+    return SIZE_BUCKET_COLOR[label] || null;
+  }
+
   function docBucket(days) {
     if (days < 60) return "<60 วัน";
     if (days < 80) return "60-79 วัน";
@@ -997,7 +1012,7 @@
     var categories = [
       { title: "ชนิดกุ้ง", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.species; }) },
       { title: "ลูกกุ้งจากไหน", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.larvaeSource; }) },
-      { title: "ไซส์ที่จับส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.size; }, sizeBucket) },
+      { title: "ไซส์ที่จับส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.size; }, sizeBucket), colorFn: sizeBucketColor },
       { title: "อัตรารอดส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.survivalRate; }, survivalBucketLabel), colorFn: survivalBucketColor },
       { title: "อายุ (DOC) ส่วนใหญ่ที่จับ", items: computeCategoryBuckets(allCycles, function (c) { return c.maxDays; }, docBucket) },
       { title: "ช่วงไตรมาสที่ปิดบ่อ", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.harvestDate; }, quarterBucket) }
