@@ -99,6 +99,26 @@ body {
   font-size: 1.15rem;
 }
 
+.section-divider {
+  border-top: 1px solid var(--border);
+  margin: 22px 0;
+}
+
+.sub-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.sub-section-title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--primary-text);
+}
+
 .form-section {
   margin-bottom: 22px;
 }
