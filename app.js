@@ -52,7 +52,6 @@
   var pondCollapseAllBtn = document.getElementById("pond-summary-collapse-all-btn");
   var pondExpandAllBtn = document.getElementById("pond-summary-expand-all-btn");
   var overallSummaryEl = document.getElementById("overall-summary");
-  var statsQuickEl = document.getElementById("stats-quick");
   var statsEmptyEl = document.getElementById("stats-empty");
   var statsChartsEl = document.getElementById("stats-charts");
   var monthlyChartEl = document.getElementById("monthly-chart");
@@ -78,6 +77,13 @@
 
   var records = [];
   var recordsRef = firebase.database().ref("harvestRecords");
+
+  // Small good/ok/bad-colored graphics for ratio-style stats (survival %,
+  // FCR) in สรุปภาพรวม. Assigned here (not just above renderOverallSummary)
+  // because the mocked/first-tick RTDB listener below can render
+  // synchronously before later var assignments in this file would run.
+  var SEVERITY_COLORS = { "fcr-good": "#4ade80", "fcr-ok": "#facc15", "fcr-bad": "#f87171" };
+  var RING_CIRCUMFERENCE = 2 * Math.PI * 16;
 
   // "ใหม่" badge on pond-summary cycles: which cycles existed the last time
   // this browser closed/left the app, loaded once at startup so the badge
@@ -750,6 +756,43 @@
     return ownCycles.concat(computeImportedCycles(ownCycles));
   }
 
+  // Small good/ok/bad-colored graphics for ratio-style stats (survival %,
+  // FCR) that read better as a shape than a bare number; everything else
+  // in สรุปภาพรวม stays a plain stat tile. (SEVERITY_COLORS and
+  // RING_CIRCUMFERENCE are declared near the top of the file — see there.)
+  function severityColor(cls) {
+    return SEVERITY_COLORS[cls] || "var(--muted)";
+  }
+
+  function renderRingStat(label, pct, valueText, cls) {
+    var color = severityColor(cls);
+    var arc = pct === null ? 0 : Math.max(0, Math.min(100, pct)) / 100 * RING_CIRCUMFERENCE;
+    return (
+      "<div class=\"stat stat-ring-tile\">" +
+        "<div class=\"ring-wrap\">" +
+          "<svg viewBox=\"0 0 40 40\" class=\"ring-svg\">" +
+            "<circle cx=\"20\" cy=\"20\" r=\"16\" class=\"ring-track\"></circle>" +
+            "<circle cx=\"20\" cy=\"20\" r=\"16\" class=\"ring-fill\" style=\"stroke:" + color + ";stroke-dasharray:" + arc.toFixed(2) + " " + RING_CIRCUMFERENCE.toFixed(2) + ";\"></circle>" +
+          "</svg>" +
+          "<div class=\"ring-center\" style=\"color:" + color + ";\">" + valueText + "</div>" +
+        "</div>" +
+        "<div class=\"stat-label\">" + label + "</div>" +
+      "</div>"
+    );
+  }
+
+  function renderMeterStat(label, value, digits, maxRef, cls) {
+    var color = severityColor(cls);
+    var pct = value === null ? 0 : Math.max(0, Math.min(1, value / maxRef)) * 100;
+    return (
+      "<div class=\"stat stat-meter-tile\">" +
+        "<div class=\"stat-value\" style=\"color:" + color + ";\">" + (value === null ? "-" : fmt(value, digits)) + "</div>" +
+        "<div class=\"rank-bar-track meter-track\"><div class=\"rank-bar-fill\" style=\"width:" + pct + "%;background:" + color + ";\"></div></div>" +
+        "<div class=\"stat-label\">" + label + "</div>" +
+      "</div>"
+    );
+  }
+
   function renderOverallSummary() {
     var allCycles = computeAllCycles();
     var pondKeys = new Set(allCycles.map(function (c) { return c.farm + "||" + c.pond; }));
@@ -766,14 +809,15 @@
       { label: "จำนวนบ่อที่บันทึก", value: pondKeys.size },
       { label: "จับรวมทั้งหมด (กก.)", value: fmt(totalCatch, 2) },
       { label: "อาหารรวมทั้งหมด (กก.)", value: fmt(totalFeed, 2) },
-      { label: "มูลค่ารวม (บาท)", value: fmt(totalValue, 2) },
-      { label: "อัตรารอดเฉลี่ยรวม", value: overallSurvival === null ? "-" : fmt(overallSurvival, 1) + "%" },
-      { label: "FCR เฉลี่ยรวม", value: overallFcr === null ? "-" : fmt(overallFcr, 2) }
+      { label: "มูลค่ารวม (บาท)", value: fmt(totalValue, 2) }
     ];
 
-    overallSummaryEl.innerHTML = stats.map(function (s) {
-      return "<div class=\"stat\"><div class=\"stat-value\">" + s.value + "</div><div class=\"stat-label\">" + s.label + "</div></div>";
-    }).join("");
+    overallSummaryEl.innerHTML =
+      stats.map(function (s) {
+        return "<div class=\"stat\"><div class=\"stat-value\">" + s.value + "</div><div class=\"stat-label\">" + s.label + "</div></div>";
+      }).join("") +
+      renderRingStat("อัตรารอดเฉลี่ยรวม", overallSurvival, overallSurvival === null ? "-" : fmt(overallSurvival, 1) + "%", survivalBadgeClass(overallSurvival)) +
+      renderMeterStat("FCR เฉลี่ยรวม", overallFcr, 2, 3, fcrBadgeClass(overallFcr));
   }
 
   var THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
@@ -981,7 +1025,6 @@
   function renderStats() {
     var allCycles = computeAllCycles();
     if (allCycles.length === 0) {
-      statsQuickEl.innerHTML = "";
       statsChartsEl.classList.add("hidden");
       statsEmptyEl.classList.remove("hidden");
       summaryStatsBodyEl.innerHTML = "";
@@ -1046,9 +1089,9 @@
       { label: "อัตรารอดที่พบบ่อยที่สุด", value: (busiestBucket && busiestBucket.count > 0) ? busiestBucket.label : "-" }
     ];
 
-    statsQuickEl.innerHTML = quickStats.map(function (s) {
+    overallSummaryEl.insertAdjacentHTML("beforeend", quickStats.map(function (s) {
       return "<div class=\"stat\"><div class=\"stat-value\">" + s.value + "</div><div class=\"stat-label\">" + s.label + "</div></div>";
-    }).join("");
+    }).join(""));
 
     renderSizeProductionChart(allCycles);
     renderSummaryStats(allCycles);
