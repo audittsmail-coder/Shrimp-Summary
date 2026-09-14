@@ -845,25 +845,6 @@
     { label: "90%+", test: function (v) { return v >= 90; } }
   ];
 
-  function renderBarChart(container, items, valueFormatter) {
-    if (items.length === 0) {
-      container.innerHTML = "<p class=\"empty-state\">ไม่มีข้อมูล</p>";
-      return;
-    }
-    var maxValue = Math.max.apply(null, items.map(function (it) { return it.value; })) || 1;
-    container.innerHTML = items.map(function (it) {
-      var heightPct = it.value > 0 ? Math.max((it.value / maxValue) * 100, 3) : 0;
-      var barStyle = "height:" + heightPct + "%;" + (it.color ? "background:" + it.color + ";" : "");
-      return (
-        "<div class=\"bar-group\" title=\"" + escapeHtml(it.tooltip) + "\">" +
-          "<div class=\"bar-value\">" + valueFormatter(it.value) + "</div>" +
-          "<div class=\"bar\" style=\"" + barStyle + "\"></div>" +
-          "<div class=\"bar-label\">" + escapeHtml(it.label) + "</div>" +
-        "</div>"
-      );
-    }).join("");
-  }
-
   function sizeBucket(size) {
     if (size <= 40) return "≤40 ตัว/กก.";
     if (size <= 60) return "41-60 ตัว/กก.";
@@ -1056,15 +1037,21 @@
 
     var totalMonthlyCatch = monthKeys.reduce(function (s, k) { return s + monthly[k].catch; }, 0);
 
-    renderBarChart(monthlyChartEl, monthKeys.map(function (k) {
-      var m = monthly[k];
-      var pct = totalMonthlyCatch ? (m.catch / totalMonthlyCatch) * 100 : 0;
-      return {
-        label: formatMonthLabel(k),
-        value: pct,
-        tooltip: formatMonthLabel(k) + " — " + fmt(pct, 1) + "% ของยอดจับรวม (จับ " + fmt(m.catch, 2) + " กก., มูลค่า " + fmt(m.value, 2) + " บาท, " + m.count + " รอบเลี้ยง)"
-      };
-    }), function (v) { return fmt(v, 1) + "%"; });
+    monthlyChartEl.innerHTML = monthKeys.length
+      ? monthKeys.map(function (k) {
+          var m = monthly[k];
+          var pct = totalMonthlyCatch ? (m.catch / totalMonthlyCatch) * 100 : 0;
+          return (
+            "<div class=\"rank-bar-row\" title=\"" + escapeHtml(formatMonthLabel(k)) + " — " + fmt(pct, 1) + "% ของยอดจับรวม (จับ " + fmt(m.catch, 2) + " กก., มูลค่า " + fmt(m.value, 2) + " บาท, " + m.count + " รอบเลี้ยง)\">" +
+              "<span class=\"rank-bar-name\">" + escapeHtml(formatMonthLabel(k)) + "</span>" +
+              "<div class=\"size-bar-line\">" +
+                "<div class=\"rank-bar-track\"><div class=\"rank-bar-fill\" style=\"width:" + pct + "%;background:var(--primary);\"></div></div>" +
+                "<span class=\"rank-bar-value\">" + fmt(pct, 1) + "%</span>" +
+              "</div>" +
+            "</div>"
+          );
+        }).join("")
+      : "<p class=\"empty-state\">ไม่มีข้อมูล</p>";
 
     var survivalValues = allCycles
       .map(function (c) { return c.survivalRate; })
