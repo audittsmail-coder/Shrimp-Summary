@@ -58,7 +58,6 @@
   var monthlyChartEl = document.getElementById("monthly-chart");
   var sizeProductionChartEl = document.getElementById("size-production-chart");
   var quarterProductionChartEl = document.getElementById("quarter-production-chart");
-  var quarterProductionWinnerEl = document.getElementById("quarter-production-winner");
   var summaryStatsBodyEl = document.getElementById("summary-stats-body");
   var summaryStatsEmptyEl = document.getElementById("summary-stats-empty");
   var summaryStatsToggleBtn = document.getElementById("summary-stats-toggle-btn");
@@ -999,8 +998,6 @@
     var buckets = computeQuarterProductionBuckets(allCycles);
     if (buckets.length === 0) {
       quarterProductionChartEl.innerHTML = "<p class=\"empty-state\">ไม่มีข้อมูล</p>";
-      quarterProductionWinnerEl.innerHTML = "";
-      quarterProductionWinnerEl.classList.add("hidden");
       return;
     }
     var maxWeight = buckets[0].weight;
@@ -1018,10 +1015,8 @@
         "</div>"
       );
     }).join("");
-
-    quarterProductionWinnerEl.classList.remove("hidden");
-    quarterProductionWinnerEl.innerHTML = "🏆 " + escapeHtml(buckets[0].label) + " ให้ผลผลิตมากที่สุด (" + fmt(buckets[0].weight, 0) + " กก.)";
   }
+
 
   // Rank-based, not meaning-based: #1 gets the brand accent, #2 the amber
   // accent, everything past that fades to muted — same treatment for every
