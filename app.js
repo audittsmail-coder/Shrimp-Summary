@@ -53,11 +53,6 @@
   var pondExpandAllBtn = document.getElementById("pond-summary-expand-all-btn");
   var pondSortSelect = document.getElementById("pond-summary-sort-select");
   var overallSummaryEl = document.getElementById("overall-summary");
-  var statsEmptyEl = document.getElementById("stats-empty");
-  var statsChartsEl = document.getElementById("stats-charts");
-  var monthlyChartEl = document.getElementById("monthly-chart");
-  var sizeProductionChartEl = document.getElementById("size-production-chart");
-  var quarterProductionChartEl = document.getElementById("quarter-production-chart");
   var summaryStatsBodyEl = document.getElementById("summary-stats-body");
   var summaryStatsEmptyEl = document.getElementById("summary-stats-empty");
   var summaryStatsToggleBtn = document.getElementById("summary-stats-toggle-btn");
@@ -936,87 +931,34 @@
   var summaryStatsCollapsed = false;
 
   // Unlike computeCategoryBuckets (counts cycles per bucket), this sums the
-  // actual catch weight per size range, to answer "which size range is
-  // actually producing the most kg" rather than "which size is most common".
-  function computeSizeProductionBuckets(cycles) {
+  // actual catch weight per bucket — "how much was actually caught", not
+  // just "how common". bucketFn returns a label or a falsy value to skip
+  // the cycle (e.g. missing size/closing date).
+  function computeWeightShareBuckets(cycles, bucketFn) {
     var buckets = {};
+    var total = 0;
     cycles.forEach(function (c) {
-      var size = c.lastEntry && c.lastEntry.size;
-      if (!size) return;
-      var label = sizeBucket(size);
-      if (!buckets[label]) buckets[label] = { weight: 0, count: 0 };
-      buckets[label].weight += c.totalCatch || 0;
-      buckets[label].count += 1;
-    });
-    return Object.keys(buckets).map(function (label) {
-      return { label: label, weight: buckets[label].weight, count: buckets[label].count };
-    }).sort(function (a, b) { return b.weight - a.weight; });
-  }
-
-  function renderSizeProductionChart(allCycles) {
-    var buckets = computeSizeProductionBuckets(allCycles);
-    if (buckets.length === 0) {
-      sizeProductionChartEl.innerHTML = "<p class=\"empty-state\">ไม่มีข้อมูล</p>";
-      return;
-    }
-    var maxWeight = buckets[0].weight;
-
-    sizeProductionChartEl.innerHTML = buckets.map(function (b, index) {
-      var pct = maxWeight ? (b.weight / maxWeight) * 100 : 0;
-      var color = index === 0 ? "var(--primary)" : "var(--muted)";
-      return (
-        "<div class=\"rank-bar-row\" title=\"" + escapeHtml(b.label) + " — " + fmt(b.weight, 2) + " กก. (" + b.count + " รอบเลี้ยง)\">" +
-          "<span class=\"rank-bar-name\">" + escapeHtml(b.label) + "</span>" +
-          "<div class=\"size-bar-line\">" +
-            "<div class=\"rank-bar-track\"><div class=\"rank-bar-fill\" style=\"width:" + pct + "%;background:" + color + ";\"></div></div>" +
-            "<span class=\"rank-bar-value\">" + fmt(b.weight, 0) + " กก.<span class=\"rank-bar-count\">(" + b.count + " รอบเลี้ยง)</span></span>" +
-          "</div>" +
-        "</div>"
-      );
-    }).join("");
-  }
-
-  // Same shape as computeSizeProductionBuckets, bucketed by closing quarter
-  // instead of size range — "how much was actually caught each quarter".
-  function computeQuarterProductionBuckets(cycles) {
-    var buckets = {};
-    cycles.forEach(function (c) {
-      var closeDate = c.lastEntry && c.lastEntry.harvestDate;
-      if (!closeDate) return;
-      var label = quarterBucket(closeDate);
+      var label = bucketFn(c);
       if (!label) return;
       if (!buckets[label]) buckets[label] = { weight: 0, count: 0 };
       buckets[label].weight += c.totalCatch || 0;
       buckets[label].count += 1;
+      total += c.totalCatch || 0;
     });
     return Object.keys(buckets).map(function (label) {
-      return { label: label, weight: buckets[label].weight, count: buckets[label].count };
+      return { label: label, weight: buckets[label].weight, count: buckets[label].count, pct: total ? (buckets[label].weight / total) * 100 : 0 };
     }).sort(function (a, b) { return b.weight - a.weight; });
   }
 
-  function renderQuarterProductionChart(allCycles) {
-    var buckets = computeQuarterProductionBuckets(allCycles);
-    if (buckets.length === 0) {
-      quarterProductionChartEl.innerHTML = "<p class=\"empty-state\">ไม่มีข้อมูล</p>";
-      return;
-    }
-    var maxWeight = buckets[0].weight;
-
-    quarterProductionChartEl.innerHTML = buckets.map(function (b, index) {
-      var pct = maxWeight ? (b.weight / maxWeight) * 100 : 0;
-      var color = index === 0 ? "var(--primary)" : "var(--muted)";
-      return (
-        "<div class=\"rank-bar-row\" title=\"" + escapeHtml(b.label) + " — " + fmt(b.weight, 2) + " กก. (" + b.count + " รอบเลี้ยง)\">" +
-          "<span class=\"rank-bar-name\">" + escapeHtml(b.label) + "</span>" +
-          "<div class=\"size-bar-line\">" +
-            "<div class=\"rank-bar-track\"><div class=\"rank-bar-fill\" style=\"width:" + pct + "%;background:" + color + ";\"></div></div>" +
-            "<span class=\"rank-bar-value\">" + fmt(b.weight, 0) + " กก.<span class=\"rank-bar-count\">(" + b.count + " รอบเลี้ยง)</span></span>" +
-          "</div>" +
-        "</div>"
-      );
-    }).join("");
+  // Monthly catch share — same weight-bucketing idea, keyed by closing month.
+  function computeMonthlyCatchBuckets(cycles) {
+    return computeWeightShareBuckets(cycles, function (c) {
+      var closeDate = c.lastEntry && c.lastEntry.harvestDate;
+      return closeDate ? closeDate.slice(0, 7) : null;
+    }).map(function (b) {
+      return { label: formatMonthLabel(b.label), weight: b.weight, count: b.count, pct: b.pct };
+    });
   }
-
 
   // Rank-based, not meaning-based: #1 gets the brand accent, #2 the amber
   // accent, everything past that fades to muted — same treatment for every
@@ -1028,24 +970,32 @@
   }
 
   function renderSummaryStats(allCycles) {
+    var pctValue = function (it) { return fmt(it.pct, 0) + "%"; };
+    var weightValue = function (it) { return fmt(it.weight, 0) + " กก."; };
+
     var categories = [
       { title: "ชนิดกุ้ง", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.species; }) },
       { title: "ลูกกุ้งจากไหน", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.larvaeSource; }) },
       { title: "ไซส์ที่จับส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.size; }, sizeBucket) },
       { title: "อัตรารอดส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.survivalRate; }, survivalBucketLabel, SURVIVAL_BUCKETS.map(function (b) { return b.label; }).reverse()) },
       { title: "อายุ (DOC) ส่วนใหญ่ที่จับ", items: computeCategoryBuckets(allCycles, function (c) { return c.maxDays; }, docBucket) },
-      { title: "ช่วงไตรมาสที่ปิดบ่อ", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.harvestDate; }, quarterBucket) }
+      { title: "ช่วงไตรมาสที่ปิดบ่อ", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.harvestDate; }, quarterBucket) },
+      { title: "สัดส่วนที่จับรายเดือน", items: computeMonthlyCatchBuckets(allCycles), formatValue: pctValue },
+      { title: "เปรียบเทียบผลผลิตตามช่วงไซส์", items: computeWeightShareBuckets(allCycles, function (c) { var size = c.lastEntry && c.lastEntry.size; return size ? sizeBucket(size) : null; }), formatValue: weightValue },
+      { title: "ไตรมาสที่จับได้มากที่สุด", items: computeWeightShareBuckets(allCycles, function (c) { var d = c.lastEntry && c.lastEntry.harvestDate; return d ? quarterBucket(d) : null; }), formatValue: weightValue }
     ];
 
     summaryStatsBodyEl.innerHTML = categories.map(function (cat) {
+      var formatValue = cat.formatValue || pctValue;
       var rowsHtml = cat.items.length
         ? cat.items.map(function (it, index) {
             var color = rankColor(index);
+            var valueText = formatValue(it);
             return (
-              "<div class=\"rank-bar-row\" title=\"" + escapeHtml(it.label) + " — " + fmt(it.pct, 0) + "% (" + it.count + " รอบเลี้ยง)\">" +
+              "<div class=\"rank-bar-row\" title=\"" + escapeHtml(it.label) + " — " + valueText + " (" + it.count + " รอบเลี้ยง)\">" +
                 "<div class=\"rank-bar-row-label\">" +
                   "<span class=\"rank-bar-name\">" + escapeHtml(it.label) + "</span>" +
-                  "<span class=\"rank-bar-value\">" + fmt(it.pct, 0) + "%<span class=\"rank-bar-count\">(" + it.count + ")</span></span>" +
+                  "<span class=\"rank-bar-value\">" + valueText + "<span class=\"rank-bar-count\">(" + it.count + ")</span></span>" +
                 "</div>" +
                 "<div class=\"rank-bar-track\"><div class=\"rank-bar-fill\" style=\"width:" + it.pct + "%;background:" + color + ";\"></div></div>" +
               "</div>"
@@ -1073,52 +1023,17 @@
   function renderStats() {
     var allCycles = computeAllCycles();
     if (allCycles.length === 0) {
-      statsChartsEl.classList.add("hidden");
-      statsEmptyEl.classList.remove("hidden");
       summaryStatsBodyEl.innerHTML = "";
       summaryStatsBodyEl.classList.add("hidden");
       summaryStatsEmptyEl.classList.remove("hidden");
       summaryStatsToggleBtn.classList.add("hidden");
       return;
     }
-    statsChartsEl.classList.remove("hidden");
-    statsEmptyEl.classList.add("hidden");
     summaryStatsEmptyEl.classList.add("hidden");
     summaryStatsToggleBtn.classList.remove("hidden");
 
-    var monthly = {};
-    allCycles.forEach(function (c) {
-      var closeDate = c.lastEntry && c.lastEntry.harvestDate;
-      if (!closeDate) return;
-      var key = closeDate.slice(0, 7);
-      if (!monthly[key]) monthly[key] = { catch: 0, value: 0, count: 0 };
-      monthly[key].catch += c.totalCatch;
-      monthly[key].value += c.totalValue;
-      monthly[key].count += 1;
-    });
-    var monthKeys = Object.keys(monthly).sort();
-    var busiestMonthKey = null;
-    monthKeys.forEach(function (k) {
-      if (!busiestMonthKey || monthly[k].catch > monthly[busiestMonthKey].catch) busiestMonthKey = k;
-    });
-
-    var totalMonthlyCatch = monthKeys.reduce(function (s, k) { return s + monthly[k].catch; }, 0);
-
-    monthlyChartEl.innerHTML = monthKeys.length
-      ? monthKeys.map(function (k) {
-          var m = monthly[k];
-          var pct = totalMonthlyCatch ? (m.catch / totalMonthlyCatch) * 100 : 0;
-          return (
-            "<div class=\"rank-bar-row\" title=\"" + escapeHtml(formatMonthLabel(k)) + " — " + fmt(pct, 1) + "% ของยอดจับรวม (จับ " + fmt(m.catch, 2) + " กก., มูลค่า " + fmt(m.value, 2) + " บาท, " + m.count + " รอบเลี้ยง)\">" +
-              "<span class=\"rank-bar-name\">" + escapeHtml(formatMonthLabel(k)) + "</span>" +
-              "<div class=\"size-bar-line\">" +
-                "<div class=\"rank-bar-track\"><div class=\"rank-bar-fill\" style=\"width:" + pct + "%;background:var(--primary);\"></div></div>" +
-                "<span class=\"rank-bar-value\">" + fmt(pct, 1) + "%</span>" +
-              "</div>" +
-            "</div>"
-          );
-        }).join("")
-      : "<p class=\"empty-state\">ไม่มีข้อมูล</p>";
+    var monthlyItems = computeMonthlyCatchBuckets(allCycles);
+    var busiestMonthLabel = monthlyItems.length ? monthlyItems[0].label : null;
 
     var survivalValues = allCycles
       .map(function (c) { return c.survivalRate; })
@@ -1139,7 +1054,7 @@
       { label: "เฉลี่ยจับต่อรอบ (กก.)", value: avgCatch === null ? "-" : fmt(avgCatch, 2) },
       { label: "เฉลี่ยมูลค่าต่อรอบ (บาท)", value: avgValue === null ? "-" : fmt(avgValue, 2) },
       { label: "เฉลี่ยวันเลี้ยงต่อรอบ (วัน)", value: avgDays === null ? "-" : fmt(avgDays, 0) },
-      { label: "เดือนปิดบ่อมากที่สุด", value: busiestMonthKey ? formatMonthLabel(busiestMonthKey) : "-" },
+      { label: "เดือนปิดบ่อมากที่สุด", value: busiestMonthLabel || "-" },
       { label: "อัตรารอดที่พบบ่อยที่สุด", value: (busiestBucket && busiestBucket.count > 0) ? busiestBucket.label : "-" }
     ];
 
@@ -1147,8 +1062,6 @@
       return "<div class=\"stat\"><div class=\"stat-value\">" + s.value + "</div><div class=\"stat-label\">" + s.label + "</div></div>";
     }).join(""));
 
-    renderSizeProductionChart(allCycles);
-    renderQuarterProductionChart(allCycles);
     renderSummaryStats(allCycles);
   }
 

@@ -603,21 +603,6 @@ tbody tr:hover {
   margin: 4px auto 0;
 }
 
-.chart-block {
-  margin-top: 24px;
-}
-
-.chart-block:first-of-type {
-  margin-top: 0;
-}
-
-.chart-title {
-  margin: 0 0 14px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-
 .summary-stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -684,28 +669,6 @@ tbody tr:hover {
 .rank-bar-fill {
   height: 100%;
   border-radius: 4px;
-}
-
-#size-production-chart .rank-bar-name,
-#monthly-chart .rank-bar-name,
-#quarter-production-chart .rank-bar-name {
-  display: block;
-  margin-bottom: 5px;
-  font-size: 0.82rem;
-}
-
-#size-production-chart .size-bar-line,
-#monthly-chart .size-bar-line,
-#quarter-production-chart .size-bar-line {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-#size-production-chart .rank-bar-track,
-#monthly-chart .rank-bar-track,
-#quarter-production-chart .rank-bar-track {
-  flex: 0 1 50%;
 }
 
 @media (max-width: 640px) {
