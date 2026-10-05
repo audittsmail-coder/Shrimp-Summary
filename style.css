@@ -699,24 +699,21 @@ tbody tr:hover {
 }
 
 #size-production-chart .rank-bar-name,
-#monthly-chart .rank-bar-name,
-#quarter-production-chart .rank-bar-name {
+#monthly-chart .rank-bar-name {
   display: block;
   margin-bottom: 5px;
   font-size: 0.82rem;
 }
 
 #size-production-chart .size-bar-line,
-#monthly-chart .size-bar-line,
-#quarter-production-chart .size-bar-line {
+#monthly-chart .size-bar-line {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
 #size-production-chart .rank-bar-track,
-#monthly-chart .rank-bar-track,
-#quarter-production-chart .rank-bar-track {
+#monthly-chart .rank-bar-track {
   flex: 0 1 50%;
 }
 
