@@ -51,6 +51,7 @@
   var pondSummaryBody = document.getElementById("pond-summary-body");
   var pondCollapseAllBtn = document.getElementById("pond-summary-collapse-all-btn");
   var pondExpandAllBtn = document.getElementById("pond-summary-expand-all-btn");
+  var pondSortSelect = document.getElementById("pond-summary-sort-select");
   var overallSummaryEl = document.getElementById("overall-summary");
   var statsEmptyEl = document.getElementById("stats-empty");
   var statsChartsEl = document.getElementById("stats-charts");
@@ -593,6 +594,7 @@
 
   var pondCollapseState = {}; // group key ("farm||pond") -> true if collapsed
   var lastPondGroupKeys = [];
+  var pondSortMode = "latest";
 
   function renderPondSummary() {
     var ownCycles = computeOwnCycles();
@@ -605,11 +607,18 @@
     var pondGroups = {};
     cycleList.forEach(function (c) {
       var key = c.farm + "||" + c.pond;
-      if (!pondGroups[key]) pondGroups[key] = { farm: c.farm, pond: c.pond, cycles: [] };
+      if (!pondGroups[key]) pondGroups[key] = { farm: c.farm, pond: c.pond, cycles: [], latestSortKey: "" };
       pondGroups[key].cycles.push(c);
+      if (c.sortKey > pondGroups[key].latestSortKey) pondGroups[key].latestSortKey = c.sortKey;
     });
 
     var pondKeys = Object.keys(pondGroups).sort(function (a, b) {
+      if (pondSortMode === "latest") {
+        return pondGroups[b].latestSortKey.localeCompare(pondGroups[a].latestSortKey);
+      }
+      if (pondSortMode === "oldest") {
+        return pondGroups[a].latestSortKey.localeCompare(pondGroups[b].latestSortKey);
+      }
       return pondGroups[a].farm.localeCompare(pondGroups[b].farm) || pondGroups[a].pond.localeCompare(pondGroups[b].pond);
     });
     lastPondGroupKeys = pondKeys;
@@ -744,6 +753,11 @@
 
   pondExpandAllBtn.addEventListener("click", function () {
     lastPondGroupKeys.forEach(function (key) { pondCollapseState[key] = false; });
+    renderPondSummary();
+  });
+
+  pondSortSelect.addEventListener("change", function () {
+    pondSortMode = pondSortSelect.value;
     renderPondSummary();
   });
 

@@ -266,6 +266,22 @@ body {
   background: var(--primary-light);
 }
 
+.select-ghost {
+  background: transparent;
+  color: var(--primary-text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.select-ghost:hover {
+  background: var(--primary-light);
+}
+
 .btn-icon {
   background: transparent;
   border: none;
