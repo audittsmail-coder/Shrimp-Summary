@@ -79,6 +79,9 @@
   var records = [];
   var recordsRef = firebase.database().ref("harvestRecords");
 
+  // Also assigned early for the same reason as SEVERITY_COLORS below.
+  var THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+
   // Small good/ok/bad-colored graphics for ratio-style stats (survival %,
   // FCR) in สรุปภาพรวม. Assigned here (not just above renderOverallSummary)
   // because the mocked/first-tick RTDB listener below can render
@@ -644,7 +647,7 @@
       var latest = g.cycles[g.cycles.length - 1];
       var groupHasNew = g.cycles.some(function (c) { return !seenCycleIdsAtStart.has(cycleUniqueId(c)); });
       var collapsedPreview = collapsed
-        ? "<span class=\"pond-collapsed-preview\">ปิดบ่อล่าสุด " + (latest.lastEntry && latest.lastEntry.harvestDate ? escapeHtml(latest.lastEntry.harvestDate) : "-") +
+        ? "<span class=\"pond-collapsed-preview\">ปิดบ่อล่าสุด " + (latest.lastEntry && latest.lastEntry.harvestDate ? escapeHtml(formatShortThaiDate(latest.lastEntry.harvestDate)) : "-") +
           " · อัตรารอด " + (latest.survivalRate === null ? "-" : fmt(latest.survivalRate, 1) + "%") +
           " · FCR " + (latest.fcr === null ? "-" : fmt(latest.fcr, 2)) + "</span>"
         : "";
@@ -672,8 +675,8 @@
         var fcrDelta = prev ? renderDelta(c.fcr, prev.fcr, false, 2, "") : "";
         var survivalDelta = prev ? renderDelta(c.survivalRate, prev.survivalRate, true, 1, "%") : "";
         var closeDate = c.lastEntry && c.lastEntry.harvestDate;
-        var cycleLabel = c.stockingDate ? "ปล่อย " + escapeHtml(c.stockingDate) : "ไม่ระบุวันปล่อย";
-        var closeDateHint = closeDate ? "<br><span class=\"close-date-hint\">ปิด " + escapeHtml(closeDate) + "</span>" : "";
+        var cycleLabel = c.stockingDate ? "ปล่อย " + escapeHtml(formatShortThaiDate(c.stockingDate)) : "ไม่ระบุวันปล่อย";
+        var closeDateHint = closeDate ? "<br><span class=\"close-date-hint\">ปิด " + escapeHtml(formatShortThaiDate(closeDate)) + "</span>" : "";
         var cycleKeyStr = c.farm + "||" + c.pond + "||" + (c.stockingDate || "ไม่ระบุวันปล่อย");
 
         var actionsHtml;
@@ -836,14 +839,25 @@
       renderMeterStat("FCR เฉลี่ยรวม", overallFcr, 2, 3, fcrBadgeClass(overallFcr));
   }
 
-  var THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
-
   function formatMonthLabel(yyyyMM) {
     var parts = yyyyMM.split("-");
     var y = parseInt(parts[0], 10);
     var m = parseInt(parts[1], 10);
     if (!y || !m || m < 1 || m > 12) return yyyyMM;
     return THAI_MONTHS[m - 1] + " " + (y + 543);
+  }
+
+  // "DD เดือนย่อ YY" (พ.ศ. 2 หลัก) — matches the date style shown in the
+  // sister app's own ปิดบ่อ history, e.g. "02 ต.ค. 69".
+  function formatShortThaiDate(dateStr) {
+    if (!dateStr) return "";
+    var parts = dateStr.split("-");
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    var d = parseInt(parts[2], 10);
+    if (!y || !m || !d || m < 1 || m > 12) return dateStr;
+    var beYear = y + 543;
+    return pad2(d) + " " + THAI_MONTHS[m - 1] + " " + String(beYear).slice(-2);
   }
 
   function avgOf(list, getter) {
