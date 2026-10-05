@@ -644,7 +644,7 @@
       var latest = g.cycles[g.cycles.length - 1];
       var groupHasNew = g.cycles.some(function (c) { return !seenCycleIdsAtStart.has(cycleUniqueId(c)); });
       var collapsedPreview = collapsed
-        ? "<span class=\"pond-collapsed-preview\">ล่าสุด " + (latest.stockingDate ? escapeHtml(latest.stockingDate) : "-") +
+        ? "<span class=\"pond-collapsed-preview\">ปิดบ่อล่าสุด " + (latest.lastEntry && latest.lastEntry.harvestDate ? escapeHtml(latest.lastEntry.harvestDate) : "-") +
           " · อัตรารอด " + (latest.survivalRate === null ? "-" : fmt(latest.survivalRate, 1) + "%") +
           " · FCR " + (latest.fcr === null ? "-" : fmt(latest.fcr, 2)) + "</span>"
         : "";
@@ -671,7 +671,9 @@
         var isNew = !seenCycleIdsAtStart.has(cycleUniqueId(c));
         var fcrDelta = prev ? renderDelta(c.fcr, prev.fcr, false, 2, "") : "";
         var survivalDelta = prev ? renderDelta(c.survivalRate, prev.survivalRate, true, 1, "%") : "";
+        var closeDate = c.lastEntry && c.lastEntry.harvestDate;
         var cycleLabel = c.stockingDate ? "ปล่อย " + escapeHtml(c.stockingDate) : "ไม่ระบุวันปล่อย";
+        var closeDateHint = closeDate ? "<br><span class=\"close-date-hint\">ปิด " + escapeHtml(closeDate) + "</span>" : "";
         var cycleKeyStr = c.farm + "||" + c.pond + "||" + (c.stockingDate || "ไม่ระบุวันปล่อย");
 
         var actionsHtml;
@@ -695,7 +697,7 @@
 
         return (
           "<tr class=\"cycle-data-row" + (isLatest && g.cycles.length > 1 ? " is-latest" : "") + (c.imported ? " is-imported" : "") + "\">" +
-            "<td>" + cycleLabel + (isNew ? " <span class=\"new-badge\" title=\"รอบเลี้ยงที่เพิ่งปรากฏใหม่\">ใหม่</span>" : "") + "</td>" +
+            "<td>" + cycleLabel + (isNew ? " <span class=\"new-badge\" title=\"รอบเลี้ยงที่เพิ่งปรากฏใหม่\">ใหม่</span>" : "") + closeDateHint + "</td>" +
             "<td>" + fmt(c.maxDays, 0) + " วัน</td>" +
             "<td>" + fmt(c.lastEntry.size, 1) + "</td>" +
             "<td>" + fmt(c.stockingCount, 0) + "</td>" +

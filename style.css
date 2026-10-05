@@ -455,6 +455,11 @@ tbody tr:hover {
   color: var(--muted);
 }
 
+.close-date-hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
 .pond-delete-btn {
   margin-left: auto;
   background: transparent;
