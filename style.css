@@ -517,6 +517,23 @@ tbody tr:hover {
   vertical-align: middle;
 }
 
+.disease-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--danger);
+  background: var(--danger-light);
+  padding: 1px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  vertical-align: middle;
+  margin-top: 2px;
+}
+
+.cycle-data-row.has-disease {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
 .delta {
   display: block;
   font-size: 0.7rem;
