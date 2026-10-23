@@ -586,7 +586,8 @@
           entries: [],
           sortKey: stockingDate || doc.closeDate || "",
           imported: true,
-          diseaseType: doc.diseaseType || null
+          diseaseType: doc.diseaseType || null,
+          note: doc.note || null
         };
       });
   }
@@ -597,6 +598,10 @@
 
   function diseaseBadge(diseaseType) {
     return diseaseType ? "<span class=\"disease-badge\" title=\"บ่อนี้มีการแจ้งโรค/หมายเหตุจากระบบปิดบ่อ\">🦠 " + escapeHtml(diseaseType) + "</span>" : "";
+  }
+
+  function noteBadge(note) {
+    return note ? "<span class=\"note-badge\" title=\"หมายเหตุจากระบบปิดบ่อ\">📝 " + escapeHtml(note) + "</span>" : "";
   }
 
   function renderPondSummary() {
@@ -647,6 +652,7 @@
       var latest = g.cycles[g.cycles.length - 1];
       var groupHasNew = g.cycles.some(function (c) { return !seenCycleIdsAtStart.has(cycleUniqueId(c)); });
       var groupHasDisease = g.cycles.some(function (c) { return !!c.diseaseType; });
+      var groupHasNote = g.cycles.some(function (c) { return !!c.note; });
       var collapsedPreview = collapsed
         ? "<span class=\"pond-collapsed-preview\">ปิดบ่อล่าสุด " + (latest.lastEntry && latest.lastEntry.harvestDate ? escapeHtml(formatShortThaiDate(latest.lastEntry.harvestDate)) : "-") +
           " · อัตรารอด " + (latest.survivalRate === null ? "-" : fmt(latest.survivalRate, 1) + "%") +
@@ -662,6 +668,7 @@
               (g.cycles.length > 1 ? "<span class=\"cycle-count-badge\">" + g.cycles.length + " รอบเลี้ยง</span>" : "") +
               (collapsed && groupHasNew ? "<span class=\"new-badge\" title=\"มีรอบเลี้ยงใหม่ในบ่อนี้\">ใหม่</span>" : "") +
               (collapsed && groupHasDisease ? diseaseBadge("มีรายงานโรค") : "") +
+              (collapsed && groupHasNote ? noteBadge("มีหมายเหตุ") : "") +
               collapsedPreview +
               (pondIds ? "<button class=\"btn-icon danger pond-delete-btn\" data-action=\"delete-pond\" data-ids=\"" + pondIds + "\" data-label=\"" + escapeHtml(pondLabel) + "\" title=\"ลบบ่อนี้ทั้งหมด\">🗑️ ลบบ่อนี้</button>" : "") +
             "</div>" +
@@ -702,7 +709,7 @@
 
         return (
           "<tr class=\"cycle-data-row" + (isLatest && g.cycles.length > 1 ? " is-latest" : "") + (c.imported ? " is-imported" : "") + (c.diseaseType ? " has-disease" : "") + "\">" +
-            "<td>" + cycleLabel + (isNew ? " <span class=\"new-badge\" title=\"รอบเลี้ยงที่เพิ่งปรากฏใหม่\">ใหม่</span>" : "") + closeDateHint + (c.diseaseType ? "<br>" + diseaseBadge(c.diseaseType) : "") + "</td>" +
+            "<td>" + cycleLabel + (isNew ? " <span class=\"new-badge\" title=\"รอบเลี้ยงที่เพิ่งปรากฏใหม่\">ใหม่</span>" : "") + closeDateHint + (c.diseaseType ? "<br>" + diseaseBadge(c.diseaseType) : "") + (c.note ? "<br>" + noteBadge(c.note) : "") + "</td>" +
             "<td>" + fmt(c.maxDays, 0) + " วัน</td>" +
             "<td>" + fmt(c.lastEntry.size, 1) + "</td>" +
             "<td>" + fmt(c.stockingCount, 0) + "</td>" +
