@@ -531,6 +531,7 @@ tbody tr:hover {
 }
 
 .cycle-data-row.has-disease {
+  background: var(--danger-light);
   box-shadow: inset 3px 0 0 var(--danger);
 }
 
