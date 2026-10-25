@@ -1035,7 +1035,7 @@
 
     var categories = [
       { title: "ชนิดกุ้ง", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.species; }) },
-      { title: "ลูกกุ้งจากไหน", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.larvaeSource; }, canonicalLarvaeSource) },
+      { title: "ลูกกุ้งจากไหน", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.larvaeSource; }, canonicalLarvaeSource), noCap: true },
       { title: "ไซส์ที่จับส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.size; }, sizeBucket) },
       { title: "อัตรารอดส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.survivalRate; }, survivalBucketLabel, SURVIVAL_BUCKETS.map(function (b) { return b.label; }).reverse()) },
       { title: "อายุ (DOC) ส่วนใหญ่ที่จับ", items: computeCategoryBuckets(allCycles, function (c) { return c.maxDays; }, docBucket) },
@@ -1049,8 +1049,8 @@
 
     summaryStatsBodyEl.innerHTML = categories.map(function (cat) {
       var formatValue = cat.formatValue || pctValue;
-      var visibleItems = cat.items.slice(0, MAX_VISIBLE_ITEMS);
-      var restItems = cat.items.slice(MAX_VISIBLE_ITEMS);
+      var visibleItems = cat.noCap ? cat.items : cat.items.slice(0, MAX_VISIBLE_ITEMS);
+      var restItems = cat.noCap ? [] : cat.items.slice(MAX_VISIBLE_ITEMS);
       var rowsHtml = cat.items.length
         ? visibleItems.map(function (it, index) {
             var color = rankColor(index);
