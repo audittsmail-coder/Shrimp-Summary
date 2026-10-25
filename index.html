@@ -233,12 +233,33 @@
     <div class="section-divider"></div>
     <div class="sub-section-header">
       <h3 class="sub-section-title">สถิติสรุป</h3>
-      <button id="summary-stats-toggle-btn" class="btn btn-ghost" type="button">ซ่อนสถิติ</button>
+      <div class="toolbar">
+        <button id="larvae-alias-manage-btn" class="btn btn-ghost" type="button">🔗 รวมชื่อซ้ำ (ลูกกุ้ง)</button>
+        <button id="summary-stats-toggle-btn" class="btn btn-ghost" type="button">ซ่อนสถิติ</button>
+      </div>
     </div>
     <div id="summary-stats-empty" class="empty-state hidden">ยังไม่มีข้อมูลเพียงพอสำหรับทำสถิติสรุป</div>
     <div id="summary-stats-body" class="summary-stats-grid"></div>
   </section>
 
+</div>
+
+<div id="larvae-alias-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>จัดการชื่อแหล่งลูกกุ้งที่ซ้ำกัน</h3>
+      <button id="larvae-alias-close-btn" class="btn-icon" type="button" title="ปิด">✕</button>
+    </div>
+    <p class="hint">เลือกชื่อที่หมายถึงแหล่งเดียวกันแต่พิมพ์ต่างกัน แล้วตั้งชื่อหลักที่จะใช้แสดงในสถิติสรุป — ไม่กระทบข้อมูลรายการที่บันทึกไว้จริง</p>
+    <div id="larvae-alias-raw-list" class="alias-raw-list"></div>
+    <div class="form-actions alias-merge-actions">
+      <input type="text" id="larvae-alias-canonical-input" placeholder="ชื่อหลักที่ต้องการใช้ เช่น บูรพา(สมเกียรติ)">
+      <button type="button" id="larvae-alias-merge-btn" class="btn btn-primary">รวมชื่อที่เลือก</button>
+    </div>
+    <div class="section-divider"></div>
+    <h4 class="alias-existing-title">การรวมที่ตั้งไว้แล้ว</h4>
+    <div id="larvae-alias-existing-list" class="alias-existing-list"></div>
+  </div>
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>

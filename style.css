@@ -709,6 +709,125 @@ tbody tr:hover {
   color: var(--muted);
 }
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+}
+
+.modal-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.alias-raw-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 14px 0;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.alias-raw-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.alias-raw-item:hover {
+  background: var(--input-bg);
+}
+
+.alias-raw-name {
+  flex: 1;
+  color: var(--text);
+}
+
+.alias-raw-count {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.alias-raw-mapped {
+  color: var(--primary-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.alias-merge-actions {
+  margin-top: 0;
+}
+
+.alias-merge-actions input[type="text"] {
+  flex: 1;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.alias-merge-actions input[type="text"]:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.alias-existing-title {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.alias-existing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.alias-existing-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.85rem;
+  padding: 6px 2px;
+  border-bottom: 1px solid var(--border);
+}
+
 @media (max-width: 640px) {
   .app-header h1 { font-size: 1.4rem; }
   .card { padding: 14px; }

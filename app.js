@@ -60,6 +60,13 @@
   var pondListEl = document.getElementById("pond-list");
   var speciesListEl = document.getElementById("species-list");
   var larvaeSourceListEl = document.getElementById("larvae-source-list");
+  var larvaeAliasModalEl = document.getElementById("larvae-alias-modal");
+  var larvaeAliasManageBtn = document.getElementById("larvae-alias-manage-btn");
+  var larvaeAliasCloseBtn = document.getElementById("larvae-alias-close-btn");
+  var larvaeAliasRawListEl = document.getElementById("larvae-alias-raw-list");
+  var larvaeAliasCanonicalInput = document.getElementById("larvae-alias-canonical-input");
+  var larvaeAliasMergeBtn = document.getElementById("larvae-alias-merge-btn");
+  var larvaeAliasExistingListEl = document.getElementById("larvae-alias-existing-list");
   var sizeAutoFillHint = document.getElementById("size-autofill-hint");
   var syncStatusEl = document.getElementById("sync-status");
   var bulkTextarea = document.getElementById("bulk-import-textarea");
@@ -83,6 +90,12 @@
   // synchronously before later var assignments in this file would run.
   var SEVERITY_COLORS = { "fcr-good": "#4ade80", "fcr-ok": "#facc15", "fcr-bad": "#f87171" };
   var RING_CIRCUMFERENCE = 2 * Math.PI * 16;
+
+  // Raw ลูกกุ้งจากไหน text -> canonical name, for merging names typed
+  // differently for the same source in สถิติสรุป (see canonicalLarvaeSource
+  // below). Assigned here (empty, then replaced once nameAliases/larvaeSource
+  // loads) for the same synchronous-first-render reason as SEVERITY_COLORS.
+  var larvaeAliasMap = {};
 
   // "ใหม่" badge on pond-summary cycles: which cycles existed the last time
   // this browser closed/left the app, loaded once at startup so the badge
@@ -193,6 +206,39 @@
     }, function (error) {
       console.warn("โหลดข้อมูลปิดบ่อจาก Firestore ไม่สำเร็จ:", error.message);
     });
+  }
+
+  // User-managed merge list for ลูกกุ้งจากไหน names typed differently for
+  // the same source (e.g. "บูรพา(สมเกียรติ)" vs "บูรพา สมเกียรติ"). Stored
+  // in our own RTDB (not Firestore) since it's local to this app's view,
+  // keyed by encodeURIComponent(rawName) -> canonicalName (RTDB keys can't
+  // contain "." "#" "$" "[" "]" "/", which a free-typed name might include).
+  var larvaeAliasRef = firebase.database().ref("nameAliases/larvaeSource");
+  larvaeAliasRef.on("value", function (snapshot) {
+    var data = snapshot.val() || {};
+    var map = {};
+    Object.keys(data).forEach(function (encodedKey) {
+      map[decodeURIComponent(encodedKey)] = data[encodedKey];
+    });
+    larvaeAliasMap = map;
+    renderStats();
+    if (!larvaeAliasModalEl.classList.contains("hidden")) renderLarvaeAliasModal();
+  }, function (error) {
+    console.warn("โหลดรายการรวมชื่อลูกกุ้งไม่สำเร็จ:", error.message);
+  });
+
+  function canonicalLarvaeSource(raw) {
+    return (raw && larvaeAliasMap[raw]) || raw;
+  }
+
+  function setLarvaeAlias(rawNames, canonicalName) {
+    var updates = {};
+    rawNames.forEach(function (raw) { updates[encodeURIComponent(raw)] = canonicalName; });
+    larvaeAliasRef.update(updates);
+  }
+
+  function removeLarvaeAlias(rawName) {
+    larvaeAliasRef.child(encodeURIComponent(rawName)).remove();
   }
 
   // Same pondId+stockingDate scheme used for both directions: finding
@@ -989,7 +1035,7 @@
 
     var categories = [
       { title: "ชนิดกุ้ง", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.species; }) },
-      { title: "ลูกกุ้งจากไหน", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.larvaeSource; }) },
+      { title: "ลูกกุ้งจากไหน", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.larvaeSource; }, canonicalLarvaeSource) },
       { title: "ไซส์ที่จับส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.lastEntry && c.lastEntry.size; }, sizeBucket) },
       { title: "อัตรารอดส่วนใหญ่", items: computeCategoryBuckets(allCycles, function (c) { return c.survivalRate; }, survivalBucketLabel, SURVIVAL_BUCKETS.map(function (b) { return b.label; }).reverse()) },
       { title: "อายุ (DOC) ส่วนใหญ่ที่จับ", items: computeCategoryBuckets(allCycles, function (c) { return c.maxDays; }, docBucket) },
@@ -1480,6 +1526,70 @@
       .finally(function () {
         bulkImportBtn.disabled = false;
       });
+  });
+
+  function renderLarvaeAliasModal() {
+    var rawBuckets = computeCategoryBuckets(computeAllCycles(), function (c) { return c.lastEntry && c.lastEntry.larvaeSource; });
+
+    larvaeAliasRawListEl.innerHTML = rawBuckets.length
+      ? rawBuckets.map(function (it) {
+          var mappedTo = larvaeAliasMap[it.label];
+          return (
+            "<label class=\"alias-raw-item\">" +
+              "<input type=\"checkbox\" value=\"" + escapeHtml(it.label) + "\">" +
+              "<span class=\"alias-raw-name\">" + escapeHtml(it.label) + "</span>" +
+              "<span class=\"alias-raw-count\">(" + it.count + ")</span>" +
+              (mappedTo ? "<span class=\"alias-raw-mapped\">→ " + escapeHtml(mappedTo) + "</span>" : "") +
+            "</label>"
+          );
+        }).join("")
+      : "<p class=\"empty-state\">ยังไม่มีข้อมูลลูกกุ้งจากไหน</p>";
+
+    var aliasRawNames = Object.keys(larvaeAliasMap);
+    larvaeAliasExistingListEl.innerHTML = aliasRawNames.length
+      ? aliasRawNames.map(function (raw) {
+          return (
+            "<div class=\"alias-existing-row\">" +
+              "<span>" + escapeHtml(raw) + " → <strong>" + escapeHtml(larvaeAliasMap[raw]) + "</strong></span>" +
+              "<button type=\"button\" class=\"btn-icon danger\" data-remove-alias=\"" + escapeHtml(raw) + "\" title=\"เลิกรวมชื่อนี้\">🗑️</button>" +
+            "</div>"
+          );
+        }).join("")
+      : "<p class=\"empty-state\">ยังไม่มีการรวมชื่อ</p>";
+  }
+
+  larvaeAliasManageBtn.addEventListener("click", function () {
+    renderLarvaeAliasModal();
+    larvaeAliasModalEl.classList.remove("hidden");
+  });
+
+  larvaeAliasCloseBtn.addEventListener("click", function () {
+    larvaeAliasModalEl.classList.add("hidden");
+  });
+
+  larvaeAliasModalEl.addEventListener("click", function (e) {
+    if (e.target === larvaeAliasModalEl) larvaeAliasModalEl.classList.add("hidden");
+  });
+
+  larvaeAliasMergeBtn.addEventListener("click", function () {
+    var checked = Array.from(larvaeAliasRawListEl.querySelectorAll("input[type=checkbox]:checked")).map(function (el) { return el.value; });
+    var canonicalName = larvaeAliasCanonicalInput.value.trim();
+    if (!checked.length) {
+      alert("กรุณาเลือกชื่อที่ต้องการรวมอย่างน้อย 1 ชื่อ");
+      return;
+    }
+    if (!canonicalName) {
+      alert("กรุณาระบุชื่อหลักที่จะใช้แสดงในสถิติ");
+      return;
+    }
+    setLarvaeAlias(checked, canonicalName);
+    larvaeAliasCanonicalInput.value = "";
+  });
+
+  larvaeAliasExistingListEl.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-remove-alias]");
+    if (!btn) return;
+    removeLarvaeAlias(btn.getAttribute("data-remove-alias"));
   });
 
   function renderAll() {
