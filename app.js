@@ -999,10 +999,14 @@
       { title: "ไตรมาสที่จับได้มากที่สุด", items: computeWeightShareBuckets(allCycles, function (c) { var d = c.lastEntry && c.lastEntry.harvestDate; return d ? quarterBucket(d) : null; }), formatValue: weightValue }
     ];
 
+    var MAX_VISIBLE_ITEMS = 5;
+
     summaryStatsBodyEl.innerHTML = categories.map(function (cat) {
       var formatValue = cat.formatValue || pctValue;
+      var visibleItems = cat.items.slice(0, MAX_VISIBLE_ITEMS);
+      var restItems = cat.items.slice(MAX_VISIBLE_ITEMS);
       var rowsHtml = cat.items.length
-        ? cat.items.map(function (it, index) {
+        ? visibleItems.map(function (it, index) {
             var color = rankColor(index);
             var valueText = formatValue(it);
             return (
@@ -1016,10 +1020,21 @@
             );
           }).join("")
         : "<p class=\"empty-state\">ไม่มีข้อมูล</p>";
+
+      var moreHtml = "";
+      if (restItems.length) {
+        var restCount = restItems.reduce(function (sum, it) { return sum + it.count; }, 0);
+        var restPct = restItems.reduce(function (sum, it) { return sum + it.pct; }, 0);
+        var restTitle = restItems.map(function (it) { return it.label; }).join(", ");
+        moreHtml =
+          "<div class=\"rank-bar-more\" title=\"" + escapeHtml(restTitle) + "\">+" + restItems.length + " อื่นๆ · รวม " + fmt(restPct, 0) + "% (" + restCount + ")</div>";
+      }
+
       return (
         "<div class=\"summary-stat-col\">" +
           "<h4 class=\"summary-stat-title\"><span class=\"summary-stat-marker\"></span>" + escapeHtml(cat.title) + "</h4>" +
           "<div class=\"rank-bar-list\">" + rowsHtml + "</div>" +
+          moreHtml +
         "</div>"
       );
     }).join("");
