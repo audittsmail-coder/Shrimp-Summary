@@ -652,8 +652,8 @@
 
   function speciesAbbrev(species) {
     if (!species) return "";
-    if (species.indexOf("ขาว") !== -1) return "ขาว";
-    if (species.indexOf("ดำ") !== -1) return "ดำ";
+    if (species.indexOf("ขาว") !== -1) return "กุ้งขาว";
+    if (species.indexOf("ดำ") !== -1) return "กุ้งดำ";
     return "";
   }
 
