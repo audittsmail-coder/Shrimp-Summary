@@ -650,6 +650,13 @@
     return note ? "<span class=\"note-badge\" title=\"หมายเหตุจากระบบปิดบ่อ\">📝 " + escapeHtml(note) + "</span>" : "";
   }
 
+  function speciesAbbrev(species) {
+    if (!species) return "";
+    if (species.indexOf("ขาว") !== -1) return "ขาว";
+    if (species.indexOf("ดำ") !== -1) return "ดำ";
+    return "";
+  }
+
   function renderPondSummary() {
     var ownCycles = computeOwnCycles();
     var importedCycles = computeImportedCycles(ownCycles);
@@ -696,6 +703,7 @@
       }, []).join(",");
       var pondLabel = (g.farm || "ไม่ระบุฟาร์ม") + " · " + (g.pond || "ไม่ระบุบ่อ");
       var latest = g.cycles[g.cycles.length - 1];
+      var groupSpeciesTag = speciesAbbrev(latest.lastEntry && latest.lastEntry.species);
       var groupHasNew = g.cycles.some(function (c) { return !seenCycleIdsAtStart.has(cycleUniqueId(c)); });
       var groupHasDisease = g.cycles.some(function (c) { return !!c.diseaseType; });
       var groupHasNote = g.cycles.some(function (c) { return !!c.note; });
@@ -711,6 +719,7 @@
             "<div class=\"pond-group-header\">" +
               "<span class=\"group-toggle-icon\">" + (collapsed ? "▸" : "▾") + "</span>" +
               "<h3>" + escapeHtml(pondLabel) + "</h3>" +
+              (groupSpeciesTag ? "<span class=\"species-tag\">" + escapeHtml(groupSpeciesTag) + "</span>" : "") +
               (g.cycles.length > 1 ? "<span class=\"cycle-count-badge\">" + g.cycles.length + " รอบเลี้ยง</span>" : "") +
               (collapsed && groupHasNew ? "<span class=\"new-badge\" title=\"มีรอบเลี้ยงใหม่ในบ่อนี้\">ใหม่</span>" : "") +
               (collapsed && groupHasDisease ? diseaseBadge("มีรายงานโรค") : "") +

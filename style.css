@@ -450,6 +450,13 @@ tbody tr:hover {
   color: var(--muted);
 }
 
+.species-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fff;
+  margin-left: -4px;
+}
+
 .pond-collapsed-preview {
   font-size: 0.78rem;
   color: var(--muted);
